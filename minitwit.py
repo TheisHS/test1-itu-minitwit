@@ -9,6 +9,7 @@
     :license: BSD, see LICENSE for more details.
 """
 from __future__ import with_statement
+import os
 import re
 import time
 import sqlite3
@@ -21,7 +22,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 
 # configuration
-DATABASE = '/tmp/minitwit.db'
+DATABASE = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'minitwit.db')
 PER_PAGE = 30
 DEBUG = True
 SECRET_KEY = 'development key'
