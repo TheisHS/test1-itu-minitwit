@@ -1,0 +1,23 @@
+name: minitwit
+version: 0.1.0
+
+authors:
+  - TheisHS <thhs@itu.dk>
+  - Stender98 <ches@itu.dk>
+  - Carlbrr <carbr@itu.dk>
+  - NaddiNadja <nako@itu.dk>
+  - tkjelds <tokj@itu.dk>
+
+targets:
+  minitwit:
+    main: src/minitwit.cr
+
+crystal: ">= 1.11.2"
+
+dependencies:
+  kemal:
+    github: kemalcr/kemal
+  sqlite3:
+    github: crystal-lang/crystal-sqlite3
+
+license: MIT
