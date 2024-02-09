@@ -8,3 +8,5 @@ Installed Ubuntu from Microsoft Store and WSL
 
 We will use this from now on, as it was recommended.
 `#!/usr/bin/env bash`
+
+CAn i push to main?
