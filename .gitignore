@@ -10,6 +10,7 @@
 *.userosscache
 *.sln.docstates
 
+*.DS_STORE
 # virtual env
 .venv
 
