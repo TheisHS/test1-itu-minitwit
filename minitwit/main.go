@@ -109,7 +109,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
-	session, _ := store.Get(r, "cookie-name")
+	session, _ := store.Get(r, "session")
 	if _, ok := session.Values["user"]; ok {
 		http.Redirect(w, r, "/timeline", http.StatusSeeOther)
 		return
@@ -147,7 +147,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
-	session, _ := store.Get(r, "session-name")
+	session, _ := store.Get(r, "session")
 	session.Values["user"] = nil
 	session.Save(r,w)
 	fmt.Println(session.Values["user"])
