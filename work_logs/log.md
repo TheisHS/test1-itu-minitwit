@@ -53,8 +53,13 @@ Crystal Kemal vs. Ruby Sinatra
 **Decision** We will go with Crystal Kemal.
 
 
-
 ## February 13
+
+We have decided to change language from Crystal + Kemal to Go. Reason for this is that Crystal and especially Kemal lacks documentation to a point where it becomes almost impossible to work with. The reasoning for Go is that it matches Crystal in the comparison sheet we made, while having a lot more documentation.
+
+Initial refactor (setup connections, middleware and declare endpoints) was done together on one screen. With a setup that worked, we split up the work by dividing the different functionalities between group members. We created a local environment (.env) with a SESSION_KEY that all members of the group should have locally, because we do not want to push any secrets to the repository. We can also mirror the Flask session using a Gorilla library for sessions. Additionally we are using the Gorilla mux library for routing.
+
+We thought of TDD when refactoring to Go and the needed tests.
 
 ## Containerizing using Docker
 We have containerized our application and added following files:
