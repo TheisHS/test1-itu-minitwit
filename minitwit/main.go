@@ -119,11 +119,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		username := r.FormValue("username")
 		password := r.FormValue("password")
 
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer db.Close()
-
 		var user struct {
 			user_id int
 			username string
