@@ -52,7 +52,6 @@ Crystal Kemal vs. Ruby Sinatra
 
 **Decision** We will go with Crystal Kemal.
 
-
 ## February 13
 
 We have decided to change language from Crystal + Kemal to Go. Reason for this is that Crystal and especially Kemal lacks documentation to a point where it becomes almost impossible to work with. The reasoning for Go is that it matches Crystal in the comparison sheet we made, while having a lot more documentation.
@@ -61,26 +60,49 @@ Initial refactor (setup connections, middleware and declare endpoints) was done 
 
 We thought of TDD when refactoring to Go and the needed tests.
 
-## Containerizing using Docker
+### Containerizing using Docker
+
 We have containerized our application and added following files:
+
 - Dockerfile
 - compose.yaml
 - .dockerignore (just to keep the filesystem of the container clean...)
 
 First we used:
+
 - $ docker init
 
 'docker init' generates some initial docker-related files like Dockerfile, compose.yaml etc.
-However, the Dockerfile included quite a bit of complex and unnecessary image-building instructions, 
+However, the Dockerfile included quite a bit of complex and unnecessary image-building instructions,
 making it troublesome to adapt to our project (especially since we're not Docker experts).
-Instead, we decided to create the dockerfile manually for clarity - we believe that 
+Instead, we decided to create the dockerfile manually for clarity - we believe that
 understanding the image-building process from the beginning will pay off in the long run.
 
 Our Dockerfile includes a base-image from https://hub.docker.com/_/golang that defines
 necessary dependencies for GoLang to build our image off on.
 Further we set up the working directory within the image to include application specific dependencies specified in the go.mod file (so we copied our go.mod file
-to the working directory of the image's filesystem in order to download and verify them in our running container). 
+to the working directory of the image's filesystem in order to download and verify them in our running container).
 The compose.yaml is not really needed yet as we do not require configurations for
 additional services. However, we have specified a port and made it ready to use later.
 We can now (re)build and run our container from the image specified in the Dockerfile with:
+
 - $ docker compose up --build
+
+### HTML templates
+
+Using these guides:
+
+- https://gowebexamples.com/templates/
+- https://www.calhoun.io/intro-to-templates-p3-functions/
+- https://www.digitalocean.com/community/tutorials/how-to-use-templates-in-go
+- https://pkg.go.dev/html/template
+- https://pkg.go.dev/github.com/revel/revel/session
+
+Added UserMessage struct that combines the User and Message object into one pair object, as we need these in a combined list to iterate over.
+
+Import encoding to be able to send requests to gravatar for profile pics.
+
+```
+  "crypto/md5"
+  "encoding/hex"
+```

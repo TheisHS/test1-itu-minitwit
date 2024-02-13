@@ -8,10 +8,18 @@ import (
 	"os"
 	"time"
 
+	"crypto/md5"
+	"encoding/hex"
+
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	_ "github.com/mattn/go-sqlite3"
 )
+
+type UserMessage struct {
+	user User
+	message Message
+}
 
 type User struct {
 	user_id int
@@ -31,6 +39,18 @@ type Message struct {
 type Follower struct {
 	who_id int
 	whom_id int
+}
+
+type Request struct {
+	endpoint string
+}
+
+type TimelinePageData struct {
+	request Request
+	user User
+	profile_user User
+	followed bool
+	usermessages []UserMessage
 }
 
 var (
@@ -106,6 +126,7 @@ func timelineHandler(w http.ResponseWriter, r *http.Request) {
 	} */
 	var messages []Message
 	var users []User
+	var usermessages []UserMessage
 	
 	rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND message.author_id = user.user_id AND (user.user_id = ? OR user.user_id in (SELECT whom_id FROM follower WHERE who_id = ?)) ORDER BY message.pub_date DESC LIMIT ?", 1, 1, PER_PAGE)
 	error_handler(err)
@@ -117,16 +138,41 @@ func timelineHandler(w http.ResponseWriter, r *http.Request) {
 		error_handler(err)
 		messages = append(messages, message)
 		users = append(users, user)
+
+		um := UserMessage { user: user, message: message }
+		usermessages = append(usermessages, um)
 	}
+
+	/*
+		// for rendering the HTML template
+	tmpl := template.Must(template.ParseFiles("timeline.html"))
+
+	session, _ := store.Get(r, "session")
+	user, ok := session.Values["user"]; 
+	if !ok {
+		// bad
+	}
+
+	data := TimelinePageData {
+		request: Request{ endpoint : "user_timeline" },
+		user: user,
+		profile_user: nil,
+		followed: false,
+		usermessages: usermessages,
+	}
+	tmpl.Execute(w, data)
+	*/
+
 	fmt.Println(messages)
 	//rnd.HTML(w, http.StatusOK, "timeline", nil)
 }
 
 func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
-
 	var messages []Message
 	var users []User
-    rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND message.author_id = user.user_id ORDER BY message.pub_date DESC LIMIT ?", PER_PAGE)
+	var usermessages []UserMessage
+
+  rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND message.author_id = user.user_id ORDER BY message.pub_date DESC LIMIT ?", PER_PAGE)
 	error_handler(err)
 	defer rows.Close()
 
@@ -137,7 +183,11 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 		error_handler(err)
 		messages = append(messages, message)
 		users = append(users, user)
+
+		um := UserMessage { user: user, message: message }
+		usermessages = append(usermessages, um)
 	}
+
 	fmt.Println(messages)
 
 	//rnd.HTML(w, http.StatusOK, "timeline", nil)
@@ -314,4 +364,25 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	session.Save(r,w)
 	fmt.Println(session.Values["user"])
 	http.Redirect(w,r, "/public_timeline", http.StatusSeeOther)
+}
+
+func GetMD5Hash(text string) string {
+	hash := md5.Sum([]byte(text))
+	return hex.EncodeToString(hash[:])
+}
+
+func gravatar_url(email string, size int) (string) {
+	// Return the gravatar image for the given email address.
+	return fmt.Sprintf("http://www.gravatar.com/avatar/%v?d=identicon&s=%v", GetMD5Hash(email), size)
+}
+
+func (u User) gravatar(size int) (string) {
+	// Return the gravatar image for the user's email address.
+	return fmt.Sprintf("http://www.gravatar.com/avatar/%v?d=identicon&s=%v", GetMD5Hash(u.email), size)
+}
+
+func (m Message) format_datetime() (string) {
+	// Format a timestamp for display.
+	t := time.Unix(0, int64(m.pub_date))
+	return t.Local().Format(time.ANSIC)
 }
