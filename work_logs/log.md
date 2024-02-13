@@ -51,3 +51,20 @@ https://azure.microsoft.com/en-us/resources/cloud-computing-dictionary/what-is-m
 Crystal Kemal vs. Ruby Sinatra
 
 **Decision** We will go with Crystal Kemal.
+
+
+
+## February 13
+
+## Containerizing using Docker
+We have containerized our application and added following files:
+- Dockerfile
+- compose.yaml
+- .dockerignore (just to keep the filesystem of the container clean...)
+
+Our Dockerfile includes a base-image from https://hub.docker.com/_/golang, including
+necessary dependencies for GoLang to build our image off on.
+Further we set up the working directory within the image to include application specific dependencies specified in the go.mod file (so we copied our go.mod file
+to the working directory of the image's filesystem in order to download and verify them in our running container). 
+The compose.yaml is not really needed yet as we do not require configurations for
+additional services. However, we have specified a port and made it ready to use later.
