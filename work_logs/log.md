@@ -62,9 +62,20 @@ We have containerized our application and added following files:
 - compose.yaml
 - .dockerignore (just to keep the filesystem of the container clean...)
 
-Our Dockerfile includes a base-image from https://hub.docker.com/_/golang, including
+First we used:
+- $ docker init
+
+'docker init' generates some initial docker-related files like Dockerfile, compose.yaml etc.
+However, the Dockerfile included quite a bit of complex and unnecessary image-building instructions, 
+making it troublesome to adapt to our project (especially since we're not Docker experts).
+Instead, we decided to create the dockerfile manually for clarity - we believe that 
+understanding the image-building process from the beginning will pay off in the long run.
+
+Our Dockerfile includes a base-image from https://hub.docker.com/_/golang that defines
 necessary dependencies for GoLang to build our image off on.
 Further we set up the working directory within the image to include application specific dependencies specified in the go.mod file (so we copied our go.mod file
 to the working directory of the image's filesystem in order to download and verify them in our running container). 
 The compose.yaml is not really needed yet as we do not require configurations for
 additional services. However, we have specified a port and made it ready to use later.
+We can now (re)build and run our container from the image specified in the Dockerfile with:
+- $ docker compose up --build
