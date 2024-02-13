@@ -146,9 +146,15 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
     vars := mux.Vars(r)
 	username := vars["username"]
-	var users []User
+	var user User
 
 	row := db.QueryRow("SELECT * FROM user WHERE username = ?", username)
+	err := row.Scan(&user.user_id, &user.username, &user.email, &user.pw_hash)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+	
 	followed := false
 
 	session, _ := store.Get(r, "session")
@@ -164,6 +170,18 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	var users []User
 
 	rows, err := db.Query("select message.*, user.* from message, user where user.user_id = message.author_id and user.user_id = ? order by message.pub_date desc limit ?", userID, PER_PAGE)
+	error_handler(err)
+	defer rows.Close()
+
+	for rows.Next() {
+		var message Message
+		var user User
+		err = rows.Scan(&message.message_id, &message.author_id, &message.text, &message.pub_date, &message.flagged, &user.user_id, &user.username, &user.email, &user.pw_hash)
+		error_handler(err)
+		messages = append(messages, message)
+		users = append(users, user)
+	}
+	fmt.Println(messages)
 	//rnd.HTML(w, http.StatusOK, "timeline", nil)
 }
 
