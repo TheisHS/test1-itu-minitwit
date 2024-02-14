@@ -1,27 +1,27 @@
-{{ define "title" }}{{ if eq .request.endpoint "public_timeline" }}Public
-Timeline{{ else if eq .request.endpoint "user_timeline" }}{{
-.profile_user.username }}'s Timeline {{ else }}My Timeline{{ end }}{{ end }} {{
-define "body" }}
+{{ define "title" }} {{ if eq .Request.Endpoint "public_timeline" }} Public
+Timeline {{ else if eq .Request.Endpoint "user_timeline" }} {{
+.Profile_user.Username }}'s Timeline {{ else }} My Timeline {{ end }} {{ end }}
+{{ define "body" }}
 <h2>{{ template "title" }}</h2>
-{{ if .user }} {{ if eq .request.endpoint "user_timeline" }}
+{{ if .User }} {{ if eq .Request.Endpoint "user_timeline" }}
 <div class="followstatus">
-  {{ if eq .user.user_id .profile_user.user_id }} This is you! {{ else if
-  .followed }} You are currently following this user.
-  <a class="unfollow" href="/{{.profile_user.username}}/unfollow"
+  {{ if eq .User.User_id .Profile_user.User_id }} This is you! {{ else if
+  .Followed }} You are currently following this user.
+  <a class="unfollow" href="/{{.Profile_user.Username}}/unfollow"
     >Unfollow user</a
   >. {{ else }} You are not yet following this user.
-  <a class="follow" href="/{{.profile_user.username}}/follow">Follow user</a>.
+  <a class="follow" href="/{{.Profile_user.Username}}/follow">Follow user</a>.
   {{ end }}
 </div>
 {{ end }} {{ end }}
 <ul class="messages">
-  {{ range .usermessages }}
+  {{ range .Usermessages }}
   <li>
-    <img src="{{ 48 | .user.gravatar }}" />
+    <img src="{{ 48 | .User.gravatar }}" />
     <p>
-      <strong><a href="/{{.user.username}}">{{ .user.username }}</a></strong>
-      {{ .message.text }}
-      <small>&mdash; {{ .message.format_datetime }}</small>
+      <strong><a href="/{{.User.Username}}">{{ .User.Username }}</a></strong>
+      {{ .Message.text }}
+      <small>&mdash; {{ .Message.format_datetime }}</small>
     </p>
   </li>
   {{ else }}

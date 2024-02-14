@@ -18,22 +18,22 @@ import (
 )
 
 type UserMessage struct {
-	user User
-	message Message
+	User User
+	Message Message
 }
 
 type User struct {
-	user_id int
-	username string
-	email string
+	User_id int
+	Username string
+	Email string
 	pw_hash string
 }
 
 type Message struct {
 	message_id int
 	author_id int
-	text string
-	pub_date int
+	Text string
+	Pub_date int
 	flagged int
 }
 
@@ -43,14 +43,14 @@ type Follower struct {
 }
 
 type Request struct {
-	endpoint string
+	Endpoint string
 }
 type UserTimelinePageData struct {
-	request Request
-	user User
-	profile_user User
-	followed bool
-	usermessages []UserMessage
+	Request Request
+	User User
+	Profile_user User
+	Followed bool
+	Usermessages []UserMessage
 }
 
 var (
@@ -193,15 +193,15 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	tmpl, _ := layout.ParseFiles("templates/timeline.html")
 
 	type TimelinePageData struct {
-		request Request
-		user User
-		usermessages []UserMessage
+		Request Request
+		User User
+		Usermessages []UserMessage
 	}
 
-	data := TimelinePageData {
-		request: Request{ endpoint : "public_timeline" },
-		user: user,
-		usermessages: usermessages,
+	data := TimelinePageData{
+		Request: Request{ endpoint : "public_timeline" },
+		User: user,
+		Usermessages: usermessages,
 	}
 	
 	fmt.Println(data)
@@ -347,7 +347,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session")
-	if _, ok := session.Values["user"]; ok {
+	if _, ok := session.Values["user_id"]; ok {
 		http.Redirect(w, r, "/timeline", http.StatusSeeOther)
 		return
 	}
@@ -368,7 +368,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			error = "Invalid password"
 		} else if user.username == username && user.pw_hash == password { // udnødvendigt at tjekke pwhash==psword?
 			session.Values["user_id"] = user.user_id
-			session.Values["user"] = user
 			session.Save(r, w)
 			http.Redirect(w, r, "/timeline", http.StatusSeeOther)
 			fmt.Println(session.Values["user_id"])
@@ -381,9 +380,9 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session")
-	session.Values["user"] = nil
+	session.Values["user_id"] = nil
 	session.Save(r,w)
-	fmt.Println(session.Values["user"])
+	fmt.Println(session.Values["user_id"])
 	http.Redirect(w,r, "/public_timeline", http.StatusSeeOther)
 }
 
