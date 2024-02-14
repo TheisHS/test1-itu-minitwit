@@ -1,9 +1,8 @@
-{{ define "title" }} {{ if eq .Request.Endpoint "public_timeline" }} Public
-Timeline {{ else if eq .Request.Endpoint "user_timeline" }} {{
-.Profile_user.Username }}'s Timeline {{ else }} My Timeline {{ end }} {{ end }}
-{{ define "body" }}
+{{ define "title" }}{{if .Profile_user}}{{ .Profile_user.Username }}'s
+Timeline{{else if .User}}My Timeline{{else}}Public Timeline{{end}}{{ end }}{{
+define "body" }}
 <h2>{{ template "title" }}</h2>
-{{ if .User }} {{ if eq .Request.Endpoint "user_timeline" }}
+{{ if .User }} {{ if .Profile_user }}
 <div class="followstatus">
   {{ if eq .User.User_id .Profile_user.User_id }} This is you! {{ else if
   .Followed }} You are currently following this user.
@@ -17,11 +16,11 @@ Timeline {{ else if eq .Request.Endpoint "user_timeline" }} {{
 <ul class="messages">
   {{ range .Usermessages }}
   <li>
-    <img src="{{ 48 | .User.gravatar }}" />
+    <img src="{{ .User.Gravatar 48 }}" />
     <p>
       <strong><a href="/{{.User.Username}}">{{ .User.Username }}</a></strong>
-      {{ .Message.text }}
-      <small>&mdash; {{ .Message.format_datetime }}</small>
+      {{ .Message.Text }}
+      <small>&mdash; {{ .Message.Format_datetime }}</small>
     </p>
   </li>
   {{ else }}
