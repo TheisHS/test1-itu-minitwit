@@ -1,6 +1,6 @@
-{{ extends "layout.html" }} {{ block "title" .}}Sign In{{ end }} {{ block "body"
-.}}
-<h2>Sign In</h2>
+{{ define "title" }}Sign In{{ end }} {{ define "body" }}
+
+<h2>{{ template "title" }}</h2>
 {{ if .error }}
 <div class="error"><strong>Error:</strong> {{ .error }}</div>
 {{ end }}
@@ -21,4 +21,5 @@
 
   <div class="actions"><input type="submit" value="Sign In" /></div>
 </form>
+
 {{ end }}

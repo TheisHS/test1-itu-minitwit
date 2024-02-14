@@ -15,3 +15,7 @@ Installed crystal with this command in Ubuntu terminal:
 `curl -fsSL https://crystal-lang.org/install.sh | sudo bash`
 
 Installed "Crystal Language" extension for VS Code.
+
+## February 14
+
+Installed VSCode extention "Go Template Support".

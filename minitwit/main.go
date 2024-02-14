@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -44,8 +45,7 @@ type Follower struct {
 type Request struct {
 	endpoint string
 }
-
-type TimelinePageData struct {
+type UserTimelinePageData struct {
 	request Request
 	user User
 	profile_user User
@@ -63,7 +63,7 @@ var (
 func main() {
 	//os.Remove("./minitwit.db")
 
-    r := mux.NewRouter()
+  r := mux.NewRouter()
 
   r.HandleFunc("/", timelineHandler).Methods("GET")
 	r.HandleFunc("/timeline", timelineHandler).Methods("GET")
@@ -119,16 +119,30 @@ func getUserID(username string) (int, error) {
     return userID, nil
 }
 
+func getUser(user_id int) (*User) {
+	var user User
+	err = db.QueryRow("SELECT user_id, username, email, pw_hash FROM user WHERE user_id = ?", user_id).Scan(&user.user_id, &user.username, &user.email, &user.pw_hash)
+	if err == sql.ErrNoRows {
+		return nil
+	} else {
+		return &user
+	}
+}
+
 func timelineHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "We got a visitor FROM " + r.URL.Path)
-	/* if store.user == nil {
+	session, _ := store.Get(r, "session")
+	user_id, ok := session.Values["user_id"].(int) 
+	if !ok {
 		http.Redirect(w, r, "/public_timeline", 302)
-	} */
+		return
+	}
+
+	fmt.Fprint(w, "We got a visitor FROM " + r.URL.Path)
 	var messages []Message
 	var users []User
 	var usermessages []UserMessage
 	
-	rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND message.author_id = user.user_id AND (user.user_id = ? OR user.user_id in (SELECT whom_id FROM follower WHERE who_id = ?)) ORDER BY message.pub_date DESC LIMIT ?", 1, 1, PER_PAGE)
+	rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND message.author_id = user.user_id AND (user.user_id = ? OR user.user_id in (SELECT whom_id FROM follower WHERE who_id = ?)) ORDER BY message.pub_date DESC LIMIT ?", user_id, user_id, PER_PAGE)
 	error_handler(err)
 	defer rows.Close()
 	for rows.Next() {
@@ -143,31 +157,17 @@ func timelineHandler(w http.ResponseWriter, r *http.Request) {
 		usermessages = append(usermessages, um)
 	}
 
-	/*
-		// for rendering the HTML template
-	tmpl := template.Must(template.ParseFiles("timeline.html"))
-
-	session, _ := store.Get(r, "session")
-	user, ok := session.Values["user"]; 
-	if !ok {
-		// bad
-	}
-
-	data := TimelinePageData {
-		request: Request{ endpoint : "user_timeline" },
-		user: user,
-		profile_user: nil,
-		followed: false,
-		usermessages: usermessages,
-	}
-	tmpl.Execute(w, data)
-	*/
-
 	fmt.Println(messages)
 	//rnd.HTML(w, http.StatusOK, "timeline", nil)
 }
 
 func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
+	user := User {}
+	session, _ := store.Get(r, "session")
+	user_id, ok := session.Values["user_id"].(int) 
+	if ok {
+		user = *getUser(user_id)
+	}
 	var messages []Message
 	var users []User
 	var usermessages []UserMessage
@@ -188,7 +188,27 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 		usermessages = append(usermessages, um)
 	}
 
-	fmt.Println(messages)
+	// for rendering the HTML template
+	layout, _ := template.ParseFiles("templates/layout.html")
+	tmpl, _ := layout.ParseFiles("templates/timeline.html")
+
+	type TimelinePageData struct {
+		request Request
+		user User
+		usermessages []UserMessage
+	}
+
+	data := TimelinePageData {
+		request: Request{ endpoint : "public_timeline" },
+		user: user,
+		usermessages: usermessages,
+	}
+	
+	fmt.Println(data)
+	tmpl.Execute(os.Stdout, data) // bruger bare lige stdout for at tjekke, hvad der læses
+
+
+	//fmt.Println(usermessages)
 
 	//rnd.HTML(w, http.StatusOK, "timeline", nil)
 }
@@ -344,10 +364,11 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		err = db.QueryRow("SELECT user_id, username, pw_hash FROM user WHERE username = ?", username).Scan(&user.user_id, &user.username, &user.pw_hash)
 		if err == sql.ErrNoRows {
 			error = "Invalid username"
-		} else if user.pw_hash != password {
+		} else if user.pw_hash != password { // er de nogensinde lig hinanden?
 			error = "Invalid password"
-		} else if user.username == username && user.pw_hash == password{
+		} else if user.username == username && user.pw_hash == password { // udnødvendigt at tjekke pwhash==psword?
 			session.Values["user_id"] = user.user_id
+			session.Values["user"] = user
 			session.Save(r, w)
 			http.Redirect(w, r, "/timeline", http.StatusSeeOther)
 			fmt.Println(session.Values["user_id"])
