@@ -4,6 +4,7 @@ FROM golang:1.21
 
 # Environment variable to enable C code in Go application
 # ENV CGO_ENABLED=1
+ENV SESSION_KEY="bb9cfb7ab2a6e36d683b0b209f96bb33"
 
 # WORKDIR sets the directory (or creates it) in the docker image
 WORKDIR /usr/src/app

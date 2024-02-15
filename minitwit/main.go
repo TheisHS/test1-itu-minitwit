@@ -2,17 +2,18 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
 	"os"
-	"time"
-	"fmt"
 	"strings"
+	"time"
 
-	"golang.org/x/crypto/pbkdf2"
 	"crypto/rand"
 	"crypto/sha256"
+
+	"golang.org/x/crypto/pbkdf2"
 
 	"crypto/md5"
 	"encoding/hex"
@@ -104,7 +105,7 @@ var (
 	register_tmpl *template.Template
 	db *sql.DB
 	err error
-	store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
+	store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))	
 	PER_PAGE = 30
 )
 
@@ -116,6 +117,8 @@ func main() {
 		Path:     "/",
 		MaxAge:   3600 * 8, // 8 hours
 		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+        Secure:   true,
 	}
 
 	timeline_tmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/timeline.html"))
@@ -302,7 +305,7 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 
 func followUserHandler(w http.ResponseWriter, r *http.Request) {
 	//Adds the current user as follower of the given user.
-	session, _ := store.Get(r, "session-name")
+	session, _ := store.Get(r, "session")
     userID, ok := session.Values["user_id"].(int)
     if !ok {
         http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -330,7 +333,7 @@ func followUserHandler(w http.ResponseWriter, r *http.Request) {
 
 func unfollowUserHandler(w http.ResponseWriter, r *http.Request) {
     //Removes the current user as follower of the given user."
-	session, _ := store.Get(r, "session-name")
+	session, _ := store.Get(r, "session")
     userID, ok := session.Values["user_id"].(int)
     if !ok {
         http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -426,12 +429,19 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
-	session, _ := store.Get(r, "session")
+	session, err := store.Get(r, "session")
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+	
 	if _, ok := session.Values["user_id"]; ok {
 		http.Redirect(w, r, "/timeline", http.StatusSeeOther)
 		return
 	}
+	
 	var login_error string
+	
 	if r.Method == http.MethodPost {
 		var user User
 		username := r.FormValue("username")
@@ -446,13 +456,15 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			session.Values["user_id"] = user.User_id
 			save_error := session.Save(r, w)
 			if save_error != nil {
-				http.Redirect(w, r, "/timeline", http.StatusSeeOther)
-				fmt.Println(session.Values["user_id"])
+				http.Error(w, save_error.Error(), http.StatusInternalServerError)
 				return
 			}
+			fmt.Println("User ID:", session.Values["user_id"])
+			http.Redirect(w, r, "/timeline", http.StatusSeeOther)
+            return
 		}
-		fmt.Println(login_error)
 	}
+	
 	data := LoginPageData{
 		Error: login_error,
 	}
@@ -464,9 +476,8 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session")
-	session.Values["user_id"] = nil
+	delete(session.Values, "user_id")
 	session.Save(r,w)
-	fmt.Println(session.Values["user_id"])
 	http.Redirect(w,r, "/public_timeline", http.StatusSeeOther)
 }
 
