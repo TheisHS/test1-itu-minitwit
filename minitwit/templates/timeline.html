@@ -1,27 +1,51 @@
-{{ define "title" }} {{ if eq .Request.Endpoint "public_timeline" }} Public
-Timeline {{ else if eq .Request.Endpoint "user_timeline" }} {{
-.Profile_user.Username }}'s Timeline {{ else }} My Timeline {{ end }} {{ end }}
-{{ define "body" }}
-<h2>{{ template "title" }}</h2>
-{{ if .User }} {{ if eq .Request.Endpoint "user_timeline" }}
-<div class="followstatus">
-  {{ if eq .User.User_id .Profile_user.User_id }} This is you! {{ else if
-  .Followed }} You are currently following this user.
-  <a class="unfollow" href="/{{.Profile_user.Username}}/unfollow"
-    >Unfollow user</a
-  >. {{ else }} You are not yet following this user.
-  <a class="follow" href="/{{.Profile_user.Username}}/follow">Follow user</a>.
+{{ define "title" }}
+  {{ if .Profile_user }}
+    {{ .Profile_user.Username }}'s Timeline
+  {{ else }} 
+    {{ if .IsPublic }}
+      Public Timeline
+    {{ else }}
+      My Timeline
+    {{ end }}
   {{ end }}
-</div>
-{{ end }} {{ end }}
+{{ end }}
+{{ define "body" }}
+<h2>{{ template "title" . }}</h2>
+{{ if .User }} 
+  {{ if .Profile_user }}
+    <div class="followstatus">
+      {{ if eq .User.User_id .Profile_user.User_id }} 
+        This is you! 
+      {{ else }} 
+        {{ if .Followed }}
+          You are currently following this user.
+          <a class="unfollow" href="/{{.Profile_user.Username}}/unfollow">Unfollow user</a>. 
+        {{ else }} 
+          You are not yet following this user.
+          <a class="follow" href="/{{.Profile_user.Username}}/follow">Follow user</a>.
+        {{ end }}
+      {{ end }}
+    </div>
+  {{ else }}
+    <div class="twitbox">
+      <h3>What's on your mind {{ .User.Username}}?</h3>
+      <form action="/add_message" method="post">
+        <p>
+          <input type="text" name="text" size="60" />
+          <input type="submit" value="Share" />
+        </p>
+      </form>
+    </div>
+  {{ end }}
+{{ end }}
 <ul class="messages">
   {{ range .Usermessages }}
   <li>
-    <img src="{{ 48 | .User.gravatar }}" />
+    <img src="{{ .User.Gravatar 48 }}" />
     <p>
       <strong><a href="/{{.User.Username}}">{{ .User.Username }}</a></strong>
-      {{ .Message.text }}
-      <small>&mdash; {{ .Message.format_datetime }}</small>
+      {{ .Message.Text }}
+      <small>&mdash; {{ .Message.Format_datetime }}</small>
     </p>
   </li>
   {{ else }}
