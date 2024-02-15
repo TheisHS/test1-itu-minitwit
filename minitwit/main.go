@@ -299,6 +299,7 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var usermessages []UserMessage
+	var logged_in_user *User = getUser(userID)
 
 	rows, err := db.Query("select message.*, user.* from message, user where user.user_id = message.author_id and user.user_id = ? order by message.pub_date desc limit ?", user.User_id, 30)
 	if err != nil {
@@ -321,6 +322,7 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 
 	// for rendering the HTML template
 	data := TimelinePageData{
+		User: logged_in_user,
 		Profile_user: user,
 		Usermessages: usermessages,
 	}

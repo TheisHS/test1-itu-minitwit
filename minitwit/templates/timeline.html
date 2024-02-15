@@ -1,6 +1,13 @@
-{{ define "title" }}{{if .Profile_user}}{{ .Profile_user.Username }}'s
-Timeline{{else if .User}}My Timeline{{else}}Public Timeline{{end}}{{ end }}{{
-define "body" }}
+{{ define "title" }}
+    {{ if .Profile_user }}
+        {{ .Profile_user.Username }}'s Timeline
+    {{ else if .User }}
+        My Timeline
+    {{ else }}
+        Public Timeline
+    {{ end }}
+{{ end }}
+{{ define "body" }}
 <h2>{{ template "title" }}</h2>
 {{ if .User }} {{ if .Profile_user }}
 <div class="followstatus">
