@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -158,7 +157,10 @@ func beforeRequest(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         // Logic to be executed before passing the request to the main handler
         db, err = connectDB()
-		error_handler(err)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		defer db.Close()
         // Pass the request to the next handler in the chain
         next.ServeHTTP(w, r)
@@ -167,12 +169,6 @@ func beforeRequest(next http.Handler) http.Handler {
 
 func init_db() {
 	
-}
-
-func error_handler(err error) {
-	if err != nil {
-		log.Fatal(err)
-    }
 }
 
 func getUserID(username string) (int, error) {
@@ -206,14 +202,20 @@ func timelineHandler(w http.ResponseWriter, r *http.Request) {
 	var usermessages []UserMessage
 	
 	rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND message.author_id = user.user_id AND (user.user_id = ? OR user.user_id in (SELECT whom_id FROM follower WHERE who_id = ?)) ORDER BY message.pub_date DESC LIMIT ?", user_id, user_id, PER_PAGE)
-	error_handler(err)
+	if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
 	defer rows.Close()
 
 	for rows.Next() {
 		var message Message
 		var author User
 		err = rows.Scan(&message.message_id, &message.author_id, &message.Text, &message.Pub_date, &message.flagged, &author.User_id, &author.Username, &author.Email, &author.pw_hash)
-		error_handler(err)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		um := UserMessage { User: author, Message: message }
 		usermessages = append(usermessages, um)
 	}
@@ -237,15 +239,21 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var usermessages []UserMessage
 
-  rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND message.author_id = user.user_id ORDER BY message.pub_date DESC LIMIT ?", PER_PAGE)
-	error_handler(err)
+  	rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND message.author_id = user.user_id ORDER BY message.pub_date DESC LIMIT ?", PER_PAGE)
+  	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var message Message
 		var user User
 		err = rows.Scan(&message.message_id, &message.author_id, &message.Text, &message.Pub_date, &message.flagged, &user.User_id, &user.Username, &user.Email, &user.pw_hash)
-		error_handler(err)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		um := UserMessage { User: user, Message: message }
 		usermessages = append(usermessages, um)
 	}
@@ -281,21 +289,30 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	if ok {
 		row := db.QueryRow("SELECT 1 FROM follower WHERE who_id = ? AND whom_id = ?", userID, 1)
 		err := row.Scan(&followed)
-		error_handler(err)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	var messages []Message
 	var users []User
 
 	rows, err := db.Query("select message.*, user.* from message, user where user.user_id = message.author_id and user.user_id = ? order by message.pub_date desc limit ?", userID, PER_PAGE)
-	error_handler(err)
+	if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
 	defer rows.Close()
 
 	for rows.Next() {
 		var message Message
 		var user User
 		err = rows.Scan(&message.message_id, &message.author_id, &message.Text, &message.Pub_date, &message.flagged, &user.User_id, &user.Username, &user.Email, &user.pw_hash)
-		error_handler(err)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		messages = append(messages, message)
 		users = append(users, user)
 	}
