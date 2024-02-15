@@ -340,7 +340,7 @@ func followUserHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-	_, err = db.Exec("INSERT INTO follower WHERE (who_id, whom_id) VALUES (?, ?)", userID, whomID)
+	_, err = db.Exec("INSERT INTO follower (who_id, whom_id) VALUES (?, ?)", userID, whomID)
     if err != nil {
 		fmt.Println(err)
         http.Error(w, "Database error", http.StatusInternalServerError)
@@ -369,7 +369,7 @@ func unfollowUserHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-	_, err = db.Exec("DELETE FROM follower WHERE (who_id, whom_id) VALUES (?, ?)", userID, whomID)
+	_, err = db.Exec("DELETE FROM follower WHERE who_id=? and whom_id=?", userID, whomID)
     if err != nil {
 		fmt.Println(err)
         http.Error(w, "Database error", http.StatusInternalServerError)
