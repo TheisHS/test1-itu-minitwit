@@ -91,11 +91,13 @@ type TimelinePageData struct {
 	Profile_user User
 	Followed bool
 	Usermessages []UserMessage
+	Flashes []interface{}
 }
 
 type LoginPageData struct {
 	User *User
 	Error string
+	Flashes []interface{}
 }
 
 var (
@@ -270,7 +272,7 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
-  vars := mux.Vars(r)
+  	vars := mux.Vars(r)
 	username := vars["username"]
 	var user User
 
@@ -433,6 +435,8 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			pw_hash := GeneratePasswordHash(password)
 			err = db.QueryRow("insert into user (username, email, pw_hash) values (?, ?, ?)", username, email, pw_hash).Scan(&user.User_id, &user.Username, &user.pw_hash)
+			session.AddFlash("You were successfully registered and can login now")
+			session.Save(r, w)
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
@@ -484,8 +488,11 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	
 	data := LoginPageData{
 		Error: login_error,
+		Flashes: session.Flashes(),
 	}
 	
+	session.Save(r, w)
+
 	login_tmpl.Execute(w, data)
 	login_tmpl.Execute(os.Stdout, data)
 }

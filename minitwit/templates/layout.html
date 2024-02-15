@@ -14,6 +14,13 @@
     <a href="/login">sign in</a>
     {{ end }}
   </div>
+  {{ with .Flashes }} {{ if . }}
+  <ul class="flashes">
+    {{ range . }}
+  <li>{{ . }} {{ end }}</li>
+  </ul>
+  {{ end }} {{ end }}
+  
   <div class="body">{{ template "body" . }}</div>
   <div class="footer">MiniTwit &mdash; A Golang Application</div>
 </div>
