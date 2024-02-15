@@ -106,7 +106,7 @@ var (
 	register_tmpl *template.Template
 	db *sql.DB
 	err error
-	store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))	
+	store = sessions.NewCookieStore([]byte("bb9cfb7ab2a6e36d683b0b209f96bb33"))
 	PER_PAGE = 30
 )
 
@@ -139,8 +139,6 @@ func main() {
 	r.HandleFunc("/{username}", userTimelineHandler).Methods("GET")
 	r.HandleFunc("/{username}/follow", followUserHandler).Methods("GET")
 	r.HandleFunc("/{username}/unfollow", unfollowUserHandler).Methods("GET")
-
-	
 
 	fmt.Println("Server is running on port 5000")
 	r.Use(beforeRequest)
@@ -346,6 +344,8 @@ func followUserHandler(w http.ResponseWriter, r *http.Request) {
         http.Error(w, "Database error", http.StatusInternalServerError)
         return
     }
+	session.AddFlash("You are now following " + username)
+	session.Save(r, w)
 
 	//TODO: flash('You are now following "%s"' % username) -> Implement flash in Go
 	http.Redirect(w, r, fmt.Sprintf("/%s", username), http.StatusSeeOther)
@@ -375,6 +375,9 @@ func unfollowUserHandler(w http.ResponseWriter, r *http.Request) {
         http.Error(w, "Database error", http.StatusInternalServerError)
         return
     }
+
+	session.AddFlash("You are no longer following " + username)
+	session.Save(r, w)
 
 	//TODO: flash('You are no longer following "%s"' % username) -> Implement flash in Go
 	http.Redirect(w, r, fmt.Sprintf("/%s", username), http.StatusSeeOther)
@@ -406,6 +409,8 @@ func addMessageHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	session.AddFlash("Your message was recorded")
+	session.Save(r, w)
 
 	http.Redirect(w, r, "/timeline", http.StatusSeeOther)
 }
@@ -477,6 +482,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			login_error = "Invalid password"
 		} else {
 			session.Values["user_id"] = user.User_id
+			session.AddFlash("You were logged in")
 			save_error := session.Save(r, w)
 			if save_error != nil {
 				http.Error(w, save_error.Error(), http.StatusInternalServerError)
@@ -503,6 +509,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session")
 	delete(session.Values, "user_id")
+	session.AddFlash("You were logged out")
 	session.Save(r,w)
 	http.Redirect(w,r, "/public_timeline", http.StatusSeeOther)
 }

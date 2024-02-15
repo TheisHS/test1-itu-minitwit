@@ -12,7 +12,17 @@ define "body" }}
   <a class="follow" href="/{{.Profile_user.Username}}/follow">Follow user</a>.
   {{ end }}
 </div>
-{{ end }} {{ end }}
+{{ if .User }}
+<div class="twitbox">
+  <h3>What's on your mind {{ .Profile_user.Username}}?</h3>
+  <form action="/add_message" method="post">
+    <p>
+      <input type="text" name="text" size="60" /><!--
+          --><input type="submit" value="Share" />
+    </p>
+  </form>
+</div>
+{{ end }} {{ end }} {{ end }}
 <ul class="messages">
   {{ range .Usermessages }}
   <li>
