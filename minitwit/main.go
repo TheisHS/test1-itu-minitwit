@@ -289,18 +289,18 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	userID, ok := session.Values["user_id"].(int)
 
 	if ok {
-		row := db.QueryRow("SELECT 1 FROM follower WHERE who_id = ? AND whom_id = ?", userID, 1)
+		row := db.QueryRow("SELECT 1 FROM follower WHERE who_id = ? AND whom_id = ?", userID, user.User_id)
 		err := row.Scan(&followed)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			followed = false
+		} else {
+			followed = true
 		}
 	}
 
-	var messages []Message
-	var users []User
+	var usermessages []UserMessage
 
-	rows, err := db.Query("select message.*, user.* from message, user where user.user_id = message.author_id and user.user_id = ? order by message.pub_date desc limit ?", userID, PER_PAGE)
+	rows, err := db.Query("select message.*, user.* from message, user where user.user_id = message.author_id and user.user_id = ? order by message.pub_date desc limit ?", user.User_id, 30)
 	if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
@@ -315,11 +315,17 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		messages = append(messages, message)
-		users = append(users, user)
+		um := UserMessage { User: user, Message: message }
+		usermessages = append(usermessages, um)
 	}
-	fmt.Println(messages)
-	//rnd.HTML(w, http.StatusOK, "timeline", nil)
+
+	// for rendering the HTML template
+	data := TimelinePageData{
+		Profile_user: user,
+		Usermessages: usermessages,
+	}
+	
+	timeline_tmpl.Execute(w, data)
 }
 
 func followUserHandler(w http.ResponseWriter, r *http.Request) {
