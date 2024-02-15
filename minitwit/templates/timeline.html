@@ -2,10 +2,10 @@
   {{ if .Profile_user }}
     {{ .Profile_user.Username }}'s Timeline
   {{ else }} 
-    {{ if .User }}
-      My Timeline
-    {{ else }}
+    {{ if .IsPublic }}
       Public Timeline
+    {{ else }}
+      My Timeline
     {{ end }}
   {{ end }}
 {{ end }}

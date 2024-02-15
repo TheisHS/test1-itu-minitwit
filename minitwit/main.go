@@ -89,6 +89,7 @@ type Follower struct {
 type TimelinePageData struct {
 	User *User
 	Profile_user *User
+	IsPublic bool
 	Followed bool
 	Usermessages []UserMessage
 	Flashes []interface{}
@@ -265,6 +266,7 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	data := TimelinePageData{
 		User: user,
 		Usermessages: usermessages,
+		IsPublic: true,
 		Flashes: session.Flashes(),
 	}
 
