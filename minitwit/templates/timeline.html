@@ -1,35 +1,43 @@
 {{ define "title" }}
-    {{ if .Profile_user }}
-        {{ .Profile_user.Username }}'s Timeline
-    {{ else if .User }}
-        My Timeline
+  {{ if .Profile_user }}
+    {{ .Profile_user.Username }}'s Timeline
+  {{ else }} 
+    {{ if .User }}
+      My Timeline
     {{ else }}
-        Public Timeline
+      Public Timeline
     {{ end }}
+  {{ end }}
 {{ end }}
 {{ define "body" }}
-<h2>{{ template "title" }}</h2>
-{{ if .User }} {{ if .Profile_user }}
-<div class="followstatus">
-  {{ if eq .User.User_id .Profile_user.User_id }} This is you! {{ else if
-  .Followed }} You are currently following this user.
-  <a class="unfollow" href="/{{.Profile_user.Username}}/unfollow"
-    >Unfollow user</a
-  >. {{ else }} You are not yet following this user.
-  <a class="follow" href="/{{.Profile_user.Username}}/follow">Follow user</a>.
+<h2>{{ template "title" . }}</h2>
+{{ if .User }} 
+  {{ if .Profile_user }}
+    <div class="followstatus">
+      {{ if eq .User.User_id .Profile_user.User_id }} 
+        This is you! 
+      {{ else }} 
+        {{ if .Followed }}
+          You are currently following this user.
+          <a class="unfollow" href="/{{.Profile_user.Username}}/unfollow">Unfollow user</a>. 
+        {{ else }} 
+          You are not yet following this user.
+          <a class="follow" href="/{{.Profile_user.Username}}/follow">Follow user</a>.
+        {{ end }}
+      {{ end }}
+    </div>
+  {{ else }}
+    <div class="twitbox">
+      <h3>What's on your mind {{ .User.Username}}?</h3>
+      <form action="/add_message" method="post">
+        <p>
+          <input type="text" name="text" size="60" />
+          <input type="submit" value="Share" />
+        </p>
+      </form>
+    </div>
   {{ end }}
-</div>
-{{ if .User }}
-<div class="twitbox">
-  <h3>What's on your mind {{ .Profile_user.Username}}?</h3>
-  <form action="/add_message" method="post">
-    <p>
-      <input type="text" name="text" size="60" /><!--
-          --><input type="submit" value="Share" />
-    </p>
-  </form>
-</div>
-{{ end }} {{ end }} {{ end }}
+{{ end }}
 <ul class="messages">
   {{ range .Usermessages }}
   <li>

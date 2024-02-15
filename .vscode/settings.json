@@ -2,5 +2,6 @@
   "html.format.indentHandlebars": true,
   "[html]": {
     "editor.foldingStrategy": "indentation"
-  }
+  },
+  "editor.formatOnSave": false
 }

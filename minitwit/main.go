@@ -88,7 +88,7 @@ type Follower struct {
 
 type TimelinePageData struct {
 	User *User
-	Profile_user User
+	Profile_user *User
 	Followed bool
 	Usermessages []UserMessage
 	Flashes []interface{}
@@ -223,7 +223,10 @@ func timelineHandler(w http.ResponseWriter, r *http.Request) {
 	data := TimelinePageData{
 		User: user,
 		Usermessages: usermessages,
+		Flashes: session.Flashes(),
 	}
+
+	session.Save(r, w)
 	
 	timeline_tmpl.Execute(w, data)
 
@@ -262,7 +265,10 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	data := TimelinePageData{
 		User: user,
 		Usermessages: usermessages,
+		Flashes: session.Flashes(),
 	}
+
+	session.Save(r, w)
 	
 	timeline_tmpl.Execute(w, data)
 
@@ -270,7 +276,7 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
-  	vars := mux.Vars(r)
+  vars := mux.Vars(r)
 	username := vars["username"]
 	var user User
 
@@ -289,11 +295,9 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	if ok {
 		row := db.QueryRow("SELECT 1 FROM follower WHERE who_id = ? AND whom_id = ?", userID, user.User_id)
 		err := row.Scan(&followed)
-		if err != nil {
-			followed = false
-		} else {
+		if err == nil {
 			followed = true
-		}
+		} 
 	}
 
 	var usermessages []UserMessage
@@ -321,9 +325,13 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	// for rendering the HTML template
 	data := TimelinePageData{
 		User: logged_in_user,
-		Profile_user: user,
+		Profile_user: &user,
+		Followed: followed,
 		Usermessages: usermessages,
+		Flashes: session.Flashes(),
 	}
+
+	session.Save(r, w)
 	
 	timeline_tmpl.Execute(w, data)
 }
@@ -458,7 +466,10 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	data := LoginPageData{
 		Error: register_error,
+		Flashes: session.Flashes(),
 	}
+
+	session.Save(r, w)
 	
 	register_tmpl.Execute(w, data)
 	register_tmpl.Execute(os.Stdout, data)
