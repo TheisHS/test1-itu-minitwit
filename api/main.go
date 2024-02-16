@@ -97,7 +97,8 @@ var (
 )
 
 func main() {
-	//os.Remove("./minitwit.db")
+	os.Remove("./minitwit.db")
+	initDB()
 
 	r := mux.NewRouter()
 	r.HandleFunc("/latest", getLatestHandler).Methods("GET")
@@ -111,30 +112,45 @@ func main() {
   http.ListenAndServe(":5001", r)
 }
 
+
+func initDB() (*sql.DB, error) {
+	db, err := sql.Open("sqlite3", "./minitwit.db")
+	if err != nil {
+			return nil, err
+	}
+	
+	schema, err := os.ReadFile("../schema.sql")
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = db.Exec(string(schema))
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
+}
+
 func connectDB() (*sql.DB, error) {
-    db, err := sql.Open("sqlite3", "./minitwit.db")
-    if err != nil {
-        return nil, err
-    }
-    return db, nil
+	db, err := sql.Open("sqlite3", "./minitwit.db")
+	if err != nil {
+			return nil, err
+	}
+	return db, nil
 }
 
 func beforeRequest(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        // Logic to be executed before passing the request to the main handler
-        db, err = connectDB()
+  return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Logic to be executed before passing the request to the main handler
+		db, err = connectDB()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		defer db.Close()
-        // Pass the request to the next handler in the chain
-        next.ServeHTTP(w, r)
-    }) 
-}
-
-func init_db() {
-	
+		// Pass the request to the next handler in the chain
+		next.ServeHTTP(w, r)
+  }) 
 }
 
 func getUserID(username string) (int, error) {
@@ -144,16 +160,6 @@ func getUserID(username string) (int, error) {
         return 0, err
     }
     return userID, nil
-}
-
-func getUser(user_id int) (*User) {
-	var user User
-	err = db.QueryRow("SELECT user_id, username, email, pw_hash FROM user WHERE user_id = ?", user_id).Scan(&user.User_id, &user.Username, &user.Email, &user.pw_hash)
-	if err == sql.ErrNoRows {
-		return nil
-	} else {
-		return &user
-	}
 }
 
 func notReqFromSimulator(w http.ResponseWriter, r *http.Request) {
