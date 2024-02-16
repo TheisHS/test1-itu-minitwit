@@ -206,15 +206,9 @@ func getLatestHandler(w http.ResponseWriter, r *http.Request) {
 
 	content, err := strconv.Atoi(string(file)) 
 	if err != nil {
-		error_data, _ := json.Marshal(Latest {
-			Latest: -1,
-		})
-		io.WriteString(w, string(error_data))
+		io.WriteString(w, fmt.Sprintf("{\"latest\":-1}"))
 	} else {
-		data, _ := json.Marshal(Latest {
-			Latest: content, //content should be an Integer
-		})
-		io.WriteString(w, string(data))
+		io.WriteString(w, fmt.Sprintf("{\"latest\":%d}", content))
 	}
 }
 
@@ -292,6 +286,7 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		var data RegisterData
 		json.NewDecoder(r.Body).Decode(&data)
+		fmt.Println(data)
 		_, err := db.Exec("INSERT INTO message (author_id, text, pub_date, flagged) VALUES (?, ?, ?, 0)", userID, data.Content, time.Now().Unix())
 		if err != nil {
 			http.Error(w, "Database error", http.StatusInternalServerError)
@@ -324,6 +319,7 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		var data FollowsData
 		json.NewDecoder(r.Body).Decode(&data)
+		fmt.Println(data)
 		if data.Follow != "" {
 			whomID, err := getUserID(data.Follow)
 			if err != nil {
