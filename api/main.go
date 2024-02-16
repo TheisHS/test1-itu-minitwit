@@ -244,24 +244,16 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 	updateLatest(w, r)
 	req_err := notReqFromSimulator(w, r)
 	if req_err { return }
-
-	fmt.Println("Got through req_err")
 	
 	no_msgs := r.URL.Query().Get("no")
 	vars := mux.Vars(r)
 	username := vars["username"]
-	fmt.Println(no_msgs)
-	fmt.Println(username)
-
 	userID, err := getUserID(username)
 	if err != nil {
-		fmt.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 	if r.Method == http.MethodGet {
-		fmt.Println("method is get")
-
 		rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND user.user_id = message.author_id AND user.user_id = ? ORDER BY message.pub_date DESC LIMIT ?", userID, no_msgs)
 		if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -285,14 +277,11 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 		data, _ := json.Marshal(filteredMessages)
 		io.WriteString(w, string(data))
 	} else if r.Method == http.MethodPost {
-		fmt.Println("method is post")
-
 		type RegisterData struct {
 			Content string
 		}
 		var data RegisterData
 		json.NewDecoder(r.Body).Decode(&data)
-		fmt.Println(data)
 		_, err := db.Exec("INSERT INTO message (author_id, text, pub_date, flagged) VALUES (?, ?, ?, 0)", userID, data.Content, time.Now().Unix())
 		if err != nil {
 			http.Error(w, "Database error", http.StatusInternalServerError)
@@ -325,7 +314,6 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		var data FollowsData
 		json.NewDecoder(r.Body).Decode(&data)
-		fmt.Println(data)
 		if data.Follow != "" {
 			whomID, err := getUserID(data.Follow)
 			if err != nil {
@@ -335,7 +323,6 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			_, err = db.Exec("INSERT INTO follower (who_id, whom_id) VALUES (?, ?)", whoID, whomID)
 			if err != nil {
-				fmt.Println(err)
 					http.Error(w, "Database error", http.StatusInternalServerError)
 					return
 			}
@@ -352,7 +339,6 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			_, err = db.Exec("DELETE FROM follower WHERE who_id=? and WHOM_ID=?", whoID, whomID)
 			if err != nil {
-				fmt.Println(err)
 					http.Error(w, "Database error", http.StatusInternalServerError)
 					return
 			}
@@ -381,7 +367,7 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 			followers = append(followers, username)
 		}
 		follower_json, _ := json.Marshal(followers)
-		io.WriteString(w, string(follower_json))
+		io.WriteString(w, fmt.Sprintf("{\"follows\": %v}", string(follower_json)))
 	}
 }
 
@@ -410,7 +396,11 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 			register_error = "The username is already taken"
 		} else {
 			pw_hash := GeneratePasswordHash(data.Pwd)
-			db.QueryRow("insert into user (username, email, pw_hash) values (?, ?, ?)", data.Username, data.Email, pw_hash)
+			_, err := db.Exec("insert into user (username, email, pw_hash) values (?, ?, ?)", data.Username, data.Email, pw_hash)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 			w.WriteHeader(http.StatusNoContent)
 			io.WriteString(w, "")
 			return
