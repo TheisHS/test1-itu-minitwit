@@ -94,7 +94,7 @@ var (
 )
 
 func main() {
-	os.Remove("./minitwit.db")
+	// os.Remove("./minitwit.db")
 	initDB()
 
 	r := mux.NewRouter()
@@ -200,13 +200,9 @@ func getLatestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type Latest struct {
-		Latest int
-	}
-
 	content, err := strconv.Atoi(string(file)) 
 	if err != nil {
-		io.WriteString(w, fmt.Sprintf("{\"latest\":-1}"))
+		io.WriteString(w, "{\"latest\":-1}")
 	} else {
 		io.WriteString(w, fmt.Sprintf("{\"latest\":%d}", content))
 	}
@@ -248,15 +244,23 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 	updateLatest(w, r)
 	req_err := notReqFromSimulator(w, r)
 	if req_err { return }
+
+	fmt.Println("Got through req_err")
 	
 	no_msgs := r.URL.Query().Get("no")
-	username := r.URL.Query().Get("username")
+	vars := mux.Vars(r)
+	username := vars["username"]
+	fmt.Println(no_msgs)
+	fmt.Println(username)
+
 	userID, err := getUserID(username)
 	if err != nil {
+		fmt.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 	if r.Method == http.MethodGet {
+		fmt.Println("method is get")
 
 		rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND user.user_id = message.author_id AND user.user_id = ? ORDER BY message.pub_date DESC LIMIT ?", userID, no_msgs)
 		if err != nil {
@@ -281,6 +285,8 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 		data, _ := json.Marshal(filteredMessages)
 		io.WriteString(w, string(data))
 	} else if r.Method == http.MethodPost {
+		fmt.Println("method is post")
+
 		type RegisterData struct {
 			Content string
 		}
