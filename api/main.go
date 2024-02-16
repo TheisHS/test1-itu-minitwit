@@ -86,6 +86,8 @@ type Error struct{
 	Error_msg string
 }
 
+type M map[string]interface{}
+
 var (
 	db *sql.DB
 	err error
@@ -162,11 +164,7 @@ func notReqFromSimulator(w http.ResponseWriter, r *http.Request) (bool) {
 	if fromSimulator != "Basic c2ltdWxhdG9yOnN1cGVyX3NhZmUh" {
 		errMsg := "You are not authorized to use this resource!"
 		w.WriteHeader(http.StatusUnauthorized)
-		error_data, _ := json.Marshal(Error {
-			Status: 403,
-			Error_msg: errMsg,
-		})
-		io.WriteString(w, string(error_data))
+		io.WriteString(w, fmt.Sprintf("{\"status\": 403, \"error_msg\": \"%v\"}", errMsg))
 		return true
 	}
 	return false
@@ -174,25 +172,25 @@ func notReqFromSimulator(w http.ResponseWriter, r *http.Request) (bool) {
 
 func updateLatest(w http.ResponseWriter, r *http.Request) {
 	parsedCommandID, err := strconv.Atoi(r.URL.Query().Get("latest"))
+	if err != nil {
+		http.Error(w, "Invalid latest parameter", http.StatusBadRequest)
+		return
+	}
+
+	if parsedCommandID != -1 {
+		file, err := os.Create("./latest_processed_sim_action_id.txt")
 		if err != nil {
-			http.Error(w, "Invalid latest parameter", http.StatusBadRequest)
+			http.Error(w, "Failed to open file", http.StatusInternalServerError)
 			return
 		}
+		defer file.Close()
 
-		if parsedCommandID != -1 {
-			file, err := os.Create("./latest_processed_sim_action_id.txt")
-			if err != nil {
-				http.Error(w, "Failed to open file", http.StatusInternalServerError)
-				return
-			}
-			defer file.Close()
-
-			_, err = fmt.Fprintf(file, "%d", parsedCommandID)
-			if err != nil {
-				http.Error(w, "Failed to write to file", http.StatusInternalServerError)
-				return
-			}
-		}		
+		_, err = fmt.Fprintf(file, "%d", parsedCommandID)
+		if err != nil {
+			http.Error(w, "Failed to write to file", http.StatusInternalServerError)
+			return
+		}
+	}		
 }
 
 func getLatestHandler(w http.ResponseWriter, r *http.Request) {
@@ -233,7 +231,6 @@ func msgsHandler(w http.ResponseWriter, r *http.Request) {
 					return
 			}
 		defer rows.Close()
-		type M map[string]interface{}
 	
 		var filteredMessages []M
 		for rows.Next() {
@@ -259,8 +256,7 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 	if req_err { return }
 	
 	no_msgs := r.URL.Query().Get("no")
-	vars := mux.Vars(r)
-	username := vars["username"]
+	username := r.URL.Query().Get("username")
 	userID, err := getUserID(username)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
@@ -274,7 +270,6 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 				return
 		}
 		defer rows.Close()
-		type M map[string]interface{}
 	
 		var filteredMessages []M
 		for rows.Next() {
