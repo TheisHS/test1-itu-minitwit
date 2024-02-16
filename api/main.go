@@ -81,11 +81,6 @@ type Message struct {
 	flagged int
 }
 
-type Follower struct {
-	who_id int
-	whom_id int
-}
-
 type Error struct{
 	Status int
 	Error_msg string
@@ -162,7 +157,7 @@ func getUserID(username string) (int, error) {
     return userID, nil
 }
 
-func notReqFromSimulator(w http.ResponseWriter, r *http.Request) {
+func notReqFromSimulator(w http.ResponseWriter, r *http.Request) (bool) {
 	fromSimulator := r.Header.Get("Authorization")
 	if fromSimulator != "Basic c2ltdWxhdG9yOnN1cGVyX3NhZmUh" {
 		errMsg := "You are not authorized to use this resource!"
@@ -172,7 +167,9 @@ func notReqFromSimulator(w http.ResponseWriter, r *http.Request) {
 			Error_msg: errMsg,
 		})
 		io.WriteString(w, string(error_data))
+		return true
 	}
+	return false
 }
 
 func updateLatest(w http.ResponseWriter, r *http.Request) {
@@ -206,18 +203,18 @@ func getLatestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type Latest struct {
-		latest int
+		Latest int
 	}
 
 	content, err := strconv.Atoi(string(file)) 
 	if err != nil {
 		error_data, _ := json.Marshal(Latest {
-			latest: -1,
+			Latest: -1,
 		})
 		io.WriteString(w, string(error_data))
 	} else {
 		data, _ := json.Marshal(Latest {
-			latest: content, //content should be an Integer
+			Latest: content, //content should be an Integer
 		})
 		io.WriteString(w, string(data))
 	}
@@ -225,6 +222,8 @@ func getLatestHandler(w http.ResponseWriter, r *http.Request) {
 
 func msgsHandler(w http.ResponseWriter, r *http.Request) {
 	updateLatest(w, r)
+	req_err := notReqFromSimulator(w, r)
+	if req_err { return }
 
 	no_msgs := r.URL.Query().Get("no")
 	if r.Method == http.MethodGet {
@@ -256,6 +255,8 @@ func msgsHandler(w http.ResponseWriter, r *http.Request) {
 
 func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 	updateLatest(w, r)
+	req_err := notReqFromSimulator(w, r)
+	if req_err { return }
 	
 	no_msgs := r.URL.Query().Get("no")
 	vars := mux.Vars(r)
@@ -292,11 +293,11 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, string(data))
 	} else if r.Method == http.MethodPost {
 		type RegisterData struct {
-			content string
+			Content string
 		}
 		var data RegisterData
 		json.NewDecoder(r.Body).Decode(&data)
-		_, err := db.Exec("INSERT INTO message (author_id, text, pub_date, flagged) VALUES (?, ?, ?, 0)", userID, data.content, time.Now().Unix())
+		_, err := db.Exec("INSERT INTO message (author_id, text, pub_date, flagged) VALUES (?, ?, ?, 0)", userID, data.Content, time.Now().Unix())
 		if err != nil {
 			http.Error(w, "Database error", http.StatusInternalServerError)
       return
@@ -309,6 +310,8 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 
 func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 	updateLatest(w, r)
+	req_err := notReqFromSimulator(w, r)
+	if req_err { return }
 	
 	vars := mux.Vars(r)
 	username := vars["username"]
@@ -319,15 +322,15 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type FollowsData struct {
-		follow string
-		unfollow string
+		Follow string
+		Unfollow string
 	}
 	
 	if r.Method == http.MethodPost {
 		var data FollowsData
 		json.NewDecoder(r.Body).Decode(&data)
-		if data.follow != "" {
-			whomID, err := getUserID(data.follow)
+		if data.Follow != "" {
+			whomID, err := getUserID(data.Follow)
 			if err != nil {
 				// TODO: This has to be another error, likely 500 ???
 				http.Error(w, "User not found", http.StatusNotFound)
@@ -343,8 +346,8 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 			io.WriteString(w, "")
 			return
 		}
-		if data.unfollow != "" {
-			whomID, err := getUserID(data.unfollow)
+		if data.Unfollow != "" {
+			whomID, err := getUserID(data.Unfollow)
 			if err != nil {
 				// TODO: This has to be another error, likely 500 ???
 				http.Error(w, "User not found", http.StatusNotFound)
@@ -387,28 +390,30 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
 	updateLatest(w, r)
+	req_err := notReqFromSimulator(w, r)
+	if req_err { return }
 
 	var register_error string
 	if r.Method == http.MethodPost {
 		type RegisterData struct {
-			username string
-			email string
-			pwd string
+			Username string
+			Email string
+			Pwd string
 		}
 		var data RegisterData
 		json.NewDecoder(r.Body).Decode(&data)
-		user_id, _ := getUserID(data.username)
-		if len(data.username) == 0 {
+		user_id, _ := getUserID(data.Username)
+		if len(data.Username) == 0 {
 			register_error = "You have to enter a username"
-		} else if len(data.email) == 0 || !strings.Contains(data.email, "@") {
+		} else if len(data.Email) == 0 || !strings.Contains(data.Email, "@") {
 			register_error = "You have to enter a valid email address"
-		} else if len(data.pwd) == 0 {
+		} else if len(data.Pwd) == 0 {
 			register_error = "You have to enter a password"
 		} else if user_id != 0 {
 			register_error = "The username is already taken"
 		} else {
-			pw_hash := GeneratePasswordHash(data.pwd)
-			db.QueryRow("insert into user (username, email, pw_hash) values (?, ?, ?)", data.username, data.email, pw_hash)
+			pw_hash := GeneratePasswordHash(data.Pwd)
+			db.QueryRow("insert into user (username, email, pw_hash) values (?, ?, ?)", data.Username, data.Email, pw_hash)
 			w.WriteHeader(http.StatusNoContent)
 			io.WriteString(w, "")
 			return
