@@ -10,7 +10,7 @@ Vagrant.configure("2") do |config|
   config.ssh.private_key_path = '~/.ssh/id_rsa'
 
   # The synced_folder will sync the current directory with the /app directory in the VM
-  config.vm.synced_folder ".", "/app", type: "rsync"
+  config.vm.synced_folder ".", "/app", type: "rsync", rsync__exclude: [".env"]
 
   # The following block will create a VM with the name "deployment_server"
   # primary means that this VM will be the first to be started when you run `vagrant up` - we use SQLITE which is already synced from src, so we dont have to worry yet.
@@ -24,7 +24,7 @@ Vagrant.configure("2") do |config|
             provider.size = 's-1vcpu-1gb'
             provider.privatenetworking = true
             #this disables the default synced folder - we use rsync instead and specify the folder above (./src -> /app)
-            override.vm.synced_folder ".", "/vagrant", disabled: true
+            #override.vm.synced_folder ".", "/vagrant", disabled: true
           end
           server.vm.hostname = "deploymentserver"
 
@@ -37,7 +37,7 @@ Vagrant.configure("2") do |config|
             sudo apt -y install docker.io
             sudo systemctl start docker
             sudo systemctl enable docker
-            sudo curl -L "https://github.com/docker/compose/releases/download/v2.2.3/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
+            sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.6/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
             sudo chmod +x /usr/local/bin/docker-compose
 
             #echo "pulling container from dockerhub..."

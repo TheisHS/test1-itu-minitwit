@@ -10,9 +10,9 @@ services:
       - 5000:5000
   
   apiserver:
-    build:
+   build:
       context: ./api
-    ports:
+   ports:
       - 5001:5001
 # We can look at https://github.com/docker/awesome-compose if we want to integrate other services at some point and manage their deployment
 # like MySQL, perhaps.
