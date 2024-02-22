@@ -10,7 +10,7 @@ Vagrant.configure("2") do |config|
   config.ssh.private_key_path = '~/.ssh/id_rsa'
 
   # The synced_folder will sync the current directory with the /app directory in the VM
-  config.vm.synced_folder "./src", "/app", type: "rsync"
+  config.vm.synced_folder ".", "/app", type: "rsync"
 
   # The following block will create a VM with the name "deployment_server"
   # primary means that this VM will be the first to be started when you run `vagrant up` - we use SQLITE which is already synced from src, so we dont have to worry yet.
@@ -49,6 +49,7 @@ Vagrant.configure("2") do |config|
             echo "Navigate in your browser to:"
             THIS_IP=`hostname -I | cut -d" " -f1`
             echo "http://${THIS_IP}:5000"
+            echo "API available at port 5001"
 
           SHELL
   end

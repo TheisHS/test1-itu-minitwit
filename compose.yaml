@@ -3,11 +3,16 @@
 # You can add other services your application may depend on here, such as a
 # database or a cache.
 services:
-  server:
+  webserver:
     build:
-      context: .
+      context: ./src
     ports:
       - 5000:5000
-
+  
+  apiserver:
+    build:
+      context: ./api
+    ports:
+      - 5001:5001
 # We can look at https://github.com/docker/awesome-compose if we want to integrate other services at some point and manage their deployment
 # like MySQL, perhaps.
