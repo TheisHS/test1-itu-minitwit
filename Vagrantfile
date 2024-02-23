@@ -10,7 +10,7 @@ Vagrant.configure("2") do |config|
   config.ssh.private_key_path = '~/.ssh/id_rsa'
 
   # The synced_folder will sync the current directory with the /app directory in the VM
-  config.vm.synced_folder ".", "/app", type: "rsync", rsync__exclude: [".env"]
+  config.vm.synced_folder ".", "/app", type: "rsync", rsync__exclude: [".env", ".vscode/", "work_logs/"]
 
   # The following block will create a VM with the name "deployment_server"
   # primary means that this VM will be the first to be started when you run `vagrant up` - we use SQLITE which is already synced from src, so we dont have to worry yet.
@@ -21,7 +21,8 @@ Vagrant.configure("2") do |config|
             provider.image = 'ubuntu-22-04-x64'
             provider.region = 'fra1'
             #this is the smallest droplet size we can use
-            provider.size = 's-1vcpu-1gb'
+            #this means we have 1 CPU and 1GB of RAM
+            provider.size = 's-1vcpu-2gb'
             provider.privatenetworking = true
             #this disables the default synced folder - we use rsync instead and specify the folder above (./src -> /app)
             #override.vm.synced_folder ".", "/vagrant", disabled: true
@@ -31,21 +32,41 @@ Vagrant.configure("2") do |config|
           config.vm.provision "shell", inline: <<-SHELL
             echo "Updating and upgrading ubuntu2204..."
             sudo apt-get update -y
-            sudo apt-get upgrade -y
+
+            # The following address an issue in DO's Ubuntu images, which still contain a lock file
+            echo "Removing lock file..."
+            sudo killall apt apt-get
+            sudo rm /var/lib/dpkg/lock-frontend
 
             echo "Installing docker..."
-            sudo apt -y install docker.io
-            sudo systemctl start docker
-            sudo systemctl enable docker
-            sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.6/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
-            sudo chmod +x /usr/local/bin/docker-compose
+            # Install docker and docker compose
+            sudo apt-get install -y docker.io
+            sudo apt-get install -y docker-compose-v2
+            # add docker-compose to the path st. it knows the command docker-compose
+            sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+            # Status docker to check if it is running
+            sudo systemctl status docker
+
+            echo "Opening port for minitwit ..."
+            ufw allow 5000 && \
+            ufw allow 5001
+
+            #echo "Installing docker 1"
+            #sudo systemctl start docker
+            #echo "Installing docker 2"
+            #sudo systemctl enable docker
+            #echo "Installing docker 3"
+            #sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.6/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
+            #echo "Installing docker 4"
+            #echo "Installing docker 5"
 
             #echo "pulling container from dockerhub..."
             #obs. in the future we will do the following:
             #docker pull ... (pull the image from the registry (docker-hub) st. we only need the docker-compose file on the VM)
 
             echo "re-building and starting container"
-            docker-compose -f /app/compose.yaml up --build
+            cd /app
+            docker compose up
             echo "Navigate in your browser to:"
             THIS_IP=`hostname -I | cut -d" " -f1`
             echo "http://${THIS_IP}:5000"
