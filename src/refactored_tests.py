@@ -100,7 +100,7 @@ def test_timelines():
     logout(http_session)
     _, http_session = register_and_login('bar', 'default')
     add_message(http_session, 'the message by bar')
-    r = http_session.get(f'{BASE_URL}/public')
+    r = http_session.get(f'{BASE_URL}/public_timeline')
     assert 'the message by foo' in r.text
     assert 'the message by bar' in r.text
 
