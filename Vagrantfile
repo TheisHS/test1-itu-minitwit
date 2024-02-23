@@ -66,7 +66,7 @@ Vagrant.configure("2") do |config|
 
             echo "re-building and starting container"
             cd /app
-            docker compose up
+            docker compose up -d
             echo "Navigate in your browser to:"
             THIS_IP=`hostname -I | cut -d" " -f1`
             echo "http://${THIS_IP}:5000"
