@@ -115,18 +115,19 @@ func main() {
 	//os.Remove("./minitwit.db")
 
 	store.Options = &sessions.Options{
-		Domain:   "localhost",
+		// Domain:   "localhost",
 		Path:     "/",
 		MaxAge:   3600 * 8, // 8 hours
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
-        Secure:   true,
+    //Secure:   true,
 	}
 
 	timeline_tmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/timeline.html"))
 	login_tmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/login.html"))
 	register_tmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/register.html"))
 
+	init_db()
 
 	r := mux.NewRouter()
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
@@ -168,8 +169,22 @@ func beforeRequest(next http.Handler) http.Handler {
     }) 
 }
 
-func init_db() {
+func init_db() (*sql.DB, error) {
+	db, err := sql.Open("sqlite3", "./minitwit.db")
+	if err != nil {
+			return nil, err
+	}
 	
+	schema, err := os.ReadFile("../schema.sql")
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = db.Exec(string(schema))
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
 }
 
 func getUserID(username string) (int, error) {
@@ -196,7 +211,7 @@ func timelineHandler(w http.ResponseWriter, r *http.Request) {
 	user_id, ok := session.Values["user_id"].(int) 
 	fmt.Println(user_id)
 	if !ok {
-		http.Redirect(w, r, "/public_timeline", 302)
+		http.Redirect(w, r, "/public_timeline", http.StatusFound)
 		return
 	}
 	user := getUser(user_id)
@@ -362,10 +377,9 @@ func followUserHandler(w http.ResponseWriter, r *http.Request) {
         http.Error(w, "Database error", http.StatusInternalServerError)
         return
     }
-	session.AddFlash("You are now following " + username)
+	session.AddFlash("You are now following \"" + username + "\"")
 	session.Save(r, w)
 
-	//TODO: flash('You are now following "%s"' % username) -> Implement flash in Go
 	http.Redirect(w, r, fmt.Sprintf("/%s", username), http.StatusSeeOther)
 }
 
@@ -394,7 +408,7 @@ func unfollowUserHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-	session.AddFlash("You are no longer following " + username)
+	session.AddFlash("You are no longer following \"" + username + "\"")
 	session.Save(r, w)
 
 	//TODO: flash('You are no longer following "%s"' % username) -> Implement flash in Go
