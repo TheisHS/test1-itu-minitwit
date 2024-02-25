@@ -70,7 +70,7 @@ workflows:
     jobs:
       - build_web
       - build_api
-      - deploy
+      - deploy:
           requires:
             - build_web
             - build_api
