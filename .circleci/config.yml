@@ -71,10 +71,8 @@ jobs:
 workflows:
   build-and-test:
     jobs:
-      - test-go
-      - build-go-executables:
-          requires:
-            - test-go
+      - test-webserver
+      - test-apiserver
     # - deploy:
     #     requires:
     #       - build-go-executables
