@@ -106,10 +106,13 @@ Import encoding to be able to send requests to gravatar for profile pics.
   "crypto/md5"
   "encoding/hex"
 ```
+
 ## February 22
+
 ### Automated DigitalOcean VM provision using Vagrant
+
 We have created a Vagrantfile to automate the provisioning of a DigitalOcean remote VM.
-We use DigitalOcean as our cloud provider, as we have a $200 credit from GitHub Education. 
+We use DigitalOcean as our cloud provider, as we have a $200 credit from GitHub Education.
 Using a cloud provider like DigitalOcean is a good idea, as it allows us to deploy our application to a remote server, and not just run it locally.
 This is important, as we want to test our application in a production-like environment with the upcoming simulations. Also, this allows for on-demand vertical scaling, which is a pro as opposed to using some local server.
 
@@ -119,14 +122,38 @@ It seems a lot like virtualization with Docker, which is why we simply chose to 
 into the vm along our docker files, then we install docker and docker-compose in the VM, and then we build and run our application using the docker-compose.yaml file.
 For future use we have discussed pushing our docker image to dockerhub, in which case we can simply pull it from there and run it in the VM, with only our compose.yaml file in the VM.
 As opposed to manually creating the droplet, or curling the DigitalOcean API, we can now simply run the command:
-```$ vagrant up```. Also, automating this provisioning process ensures that we always have the same environment to work with.
+`$ vagrant up`. Also, automating this provisioning process ensures that we always have the same environment to work with.
 
 We have added our secrets to as Environment Variables to exclude them from the Vagrantfile and the repository.
-Specifically, the API key for DigitalOcean is a crucial secret to keep safe as it allows for the creation of droplets and other resources on DigitalOcean - so hopefully we don't get any unexpected expenses just yet :P 
+Specifically, the API key for DigitalOcean is a crucial secret to keep safe as it allows for the creation of droplets and other resources on DigitalOcean - so hopefully we don't get any unexpected expenses just yet :P
 
 We also added our newly created API folder (with the API that can handle the requests from the simulation) to the docker-compose.yaml file, so that it is included in the build and run process.
 
 The API will be served on port 5001 and the web application on 5000.
 We can now ssh into the VM using the command (granted that the member trying to ssh into the VM has set up an ssh key with DigitalOcean):
-```$ ssh root@<ip>```
-where ``<ip>`` is the IP of the VM we receive from DigitalOcean when we build our droplet.
+
+`$ ssh root@<ip>`
+
+where `<ip>` is the IP of the VM we receive from DigitalOcean when we build our droplet.
+
+## February 25
+
+### CI/CD Service
+
+As our code is stored on Github, we've eliminated Gitlab CI as as an option. Travis CI is only free for a single month (for students), and we've also eliminated this.
+
+In reality, it
+
+| Github Actions                                                                                     | CircleCI                                                                                                                  | Our considerations                                                                                                                                                           |
+| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Is free ... "Cheapest for people with public repositories"                                         | 3000 minutes for free pr month                                                                                            | We have a public repo                                                                                                                                                        |
+| Runs full pipeline automatically                                                                   | Can be paused and wait for human interaction                                                                              | We don't have a usecase for needing human intervention before deploying if the code passes all the tests we stup, and the CircleCI feature (even though nice) is not needed. |
+| More than CI/CD - can also automate manual tasks like generating changelogs or versioning releases | Only CI/CD, but specialised in this.                                                                                      | We only need CI/CD for now.                                                                                                                                                  |
+| Slower than CircleCI                                                                               | Faster than Github Actions                                                                                                | Do we need speed?                                                                                                                                                            |
+| Only Windows, MacOS and Linux                                                                      | Every operating system                                                                                                    | We only need Linux                                                                                                                                                           |
+| Configuration can be split in mulitple files                                                       | Single file configuration                                                                                                 | Cleaner setup with GHA?                                                                                                                                                      |
+| Docker support is still a bit buggy on GHA, works only with Linux.                                 | CircleCI has perfected its Docker support over the years to make it (almost) the de-facto environment for running builds. | We will use docker.                                                                                                                                                          |
+| More granular control by exposing all commands. Complexity increase.                               | Less complex, has built in commands for often-used services. Less control                                                 | We don't know what we need yet - so maybe more control is nice, but it being easy is also nice.                                                                              |
+
+https://coderonfleek.medium.com/circleci-vs-github-actions-a-software-engineers-perspective-14567e539b9c
+https://www.techtarget.com/searchsoftwarequality/tip/CircleCI-vs-GitHub-Actions-CI-CD-platform-comparison
