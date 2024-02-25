@@ -157,3 +157,33 @@ In reality, it
 
 https://coderonfleek.medium.com/circleci-vs-github-actions-a-software-engineers-perspective-14567e539b9c
 https://www.techtarget.com/searchsoftwarequality/tip/CircleCI-vs-GitHub-Actions-CI-CD-platform-comparison
+
+
+### CI/CD with CircleCI
+
+CircleCI for the pipeline: https://app.circleci.com/pipelines/circleci/WCqKgj4HsZ36SUyELrTZdu
+Docker images on DockerHub (Naddi's account)
+VM on Digital Ocean as usual, port 4000 and 4001.
+
+We had some problems with ssh'ing into the VM, but this article helped:
+
+- https://erenbasaran.medium.com/digitalocean-permission-denied-publickey-solution-6cd963049fce
+
+#### Automatic releases
+
+We will not do this yet. See article below:
+
+- https://circleci.com/blog/publishing-to-github-releases-via-circleci/
+
+```yaml
+  release:
+    triggers:
+      - schedule:
+          cron: "0 20 * * 4"
+          filters:
+            branches:
+              only:
+                - main
+```
+
+`0 20 * * 4` means "in the 0th minute, in the 20th hour, on whatever day of the month, in whatever month, on the 4th day of the week".
