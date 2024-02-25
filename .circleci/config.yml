@@ -68,13 +68,17 @@ jobs:
 workflows:
   build_and_deploy:
     jobs:
-      - build_web
-      - build_api
+      - build_web:
+          filters:
+            branches: 
+              only:
+                - main
+      - build_api:
+          filters:
+            branches: 
+              only:
+                - main
       - deploy:
           requires:
             - build_web
             - build_api
-          # filters:
-          #   branches: 
-          #     only:
-          #       - main
