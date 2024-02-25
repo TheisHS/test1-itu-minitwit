@@ -63,7 +63,7 @@ jobs:
       - run:
           name: Deploy to server
           command: |
-            ssh $SSH_USER@$SSH_HOST -i ~/.ssh/do_ssh_key -o StrictHostKeyChecking=no '/deploy.sh'
+            ssh $SSH_USER@$SSH_HOST -i ~/.ssh/do_ssh_key -o StrictHostKeyChecking=no '/minitwit/deploy.sh'
 
 workflows:
   build_and_deploy:
