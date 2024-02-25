@@ -12,13 +12,13 @@ WORKDIR /usr/src/app
 # pre-copy/cache go.mod for pre-downloading dependencies and only redownloading them in subsequent builds if they change
 
 # COPY will copy files/directories and add them to the filesystem of the container
-COPY go.mod go.sum ./
+COPY src/go.mod src/go.sum ./
 # RUN executes commands and builds a new layer on top of the current image.
 # So, download dependencies and check the dependencies of the main module.
 RUN go mod download && go mod verify
 
 # Copies the whole minitwit directory to the container
-COPY . .
+COPY src ./
 
 # Compiles code into executable
 # -v prints names of packages as they are compiled
