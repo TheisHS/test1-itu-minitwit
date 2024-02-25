@@ -7,6 +7,7 @@ jobs:
     docker:
       - image: cimg/go:1.20
     working_directory: ~/project/src
+    resource_class: medium
     steps:
       - checkout:
           path: ~/project
@@ -32,6 +33,7 @@ jobs:
     # Build go executables and store them as artifacts
     docker:
       - image: cimg/go:1.20
+    resource_class: medium
     steps:
       - checkout:
           path: ~/project
@@ -61,6 +63,7 @@ jobs:
     # This is an example deploy job, not actually used by the workflow
     docker:
       - image: cimg/base:stable
+    resource_class: medium
     steps:
       # Replace this with steps to deploy to users
       - run:
