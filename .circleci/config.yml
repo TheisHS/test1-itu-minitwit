@@ -19,14 +19,7 @@ jobs:
             docker buildx create --use
       - restore_cache:
           keys:
-            - v1-{{ .Branch }}
-          paths:
-            - /caches/app.tar
-      - run:
-          name: Load Docker image layer cache
-          command: |
-            set +o pipefail
-            docker load -i /caches/app.tar | true
+            - go-mod-v4-{{ checksum "go.sum" }}
       - run: 
           name: Build and push serverimage
           command: |
@@ -39,7 +32,11 @@ jobs:
             docker build -t "$DOCKER_USERNAME/minitwit-api:latest" -f ./api/Dockerfile .
             echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
             docker push "$DOCKER_USERNAME/minitwit-api:latest"
-      
+      - save_cache:
+          key: go-mod-v4-{{ checksum "go.sum" }}
+          paths:
+            - "/go/pkg/mod"
+
       - run:
           name: Configure SSH
           command: |
