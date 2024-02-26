@@ -12,7 +12,7 @@ jobs:
       - run:
           name: Run test script
           command: |
-            ./run-tests.sh
+            sh ./run-tests.sh
 
   build_web:
     docker:
