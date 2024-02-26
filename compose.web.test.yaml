@@ -2,23 +2,19 @@
 # This service is built from the Dockerfile in the current directory.
 # You can add other services your application may depend on here, such as a
 # database or a cache.
-services:
+services:  
   webserver:
+    network_mode: "host"
     build:
       context: .
       dockerfile: ./src/Dockerfile
-      args:
-        DATABASE: minitwit.db
-    ports:
-      - 5000:5000
-  
-  apiserver:
+
+  webtests:
+    network_mode: "host"
     build:
       context: .
-      dockerfile: ./api/Dockerfile
-      args:
-        DATABASE: minitwit.db
-    ports:
-      - 5001:5001
+      dockerfile: ./src-tests/Dockerfile
+    depends_on:
+      - webserver
 # We can look at https://github.com/docker/awesome-compose if we want to integrate other services at some point and manage their deployment
 # like MySQL, perhaps.

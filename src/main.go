@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -127,7 +128,10 @@ func main() {
 	login_tmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/login.html"))
 	register_tmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/register.html"))
 
-	init_db()
+	_, err = os.Stat("./minitwit.db")
+	if err != nil {
+    initDB();
+	}
 
 	r := mux.NewRouter()
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
@@ -169,22 +173,25 @@ func beforeRequest(next http.Handler) http.Handler {
     }) 
 }
 
-func init_db() (*sql.DB, error) {
+func initDB() {
+	log.Println("Initialising the database...")
+
+	os.Create("./minitwit.db")
 	db, err := sql.Open("sqlite3", "./minitwit.db")
 	if err != nil {
-			return nil, err
+		log.Println(err)
 	}
 	
-	schema, err := os.ReadFile("../schema.sql")
+	schema, err := os.ReadFile("./schema.sql")
 	if err != nil {
-		return nil, err
+		log.Println(err) 
 	}
-
+	
 	_, err = db.Exec(string(schema))
 	if err != nil {
-		return nil, err
+		log.Println(err) 
 	}
-	return db, nil
+	db.Close()
 }
 
 func getUserID(username string) (int, error) {

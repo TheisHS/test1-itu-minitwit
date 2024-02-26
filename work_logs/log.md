@@ -187,3 +187,21 @@ We will not do this yet. See article below:
 ```
 
 `0 20 * * 4` means "in the 0th minute, in the 20th hour, on whatever day of the month, in whatever month, on the 4th day of the week".
+
+## February 26
+
+### Tests as part of our pipeline
+
+Docker compose files should specify that the context is in the root directory but that the docker file is in a subdirectory. This is how the Dockerfiles are set up (for them to work in the pipeline), so compose files are fixed.
+
+Tests are inserted in their own directories for them to have a Dockerfile. Used this page to get the format of the compose.test files, and the command that kills the server container when the tests are done (used in next paragraph).
+https://stackoverflow.com/questions/40907954/terminate-docker-compose-when-test-container-finishes
+
+The `run-tests.sh` script builds the two images for testing the services. Then it spins up two separate containers for testing. It exits with an error code if they do not pass, which should make our pipeline fail.
+
+When running the service in one container and the python test scripts in another, I continously got a ConnectionError, which indicated that the two containers did not communicate. To fix this, I've tried many different things, but the fix that did it was make the containers run on localhost. This is as far as I'm aware not best practice, but I could not get it to work in any other way. 
+https://stackoverflow.com/questions/43547795/how-to-share-localhost-between-two-different-docker-containers
+
+Dockerfiles now have a "database" argument. If as database is passed (e.g. minitwit.db) this is copied into the image. If no database is given, the empty.db is copied instead and the gofile runs on an empty database. This is for the tests.
+
+A "run_tests" step is added to our pipeline and the build steps are made dependent on this.

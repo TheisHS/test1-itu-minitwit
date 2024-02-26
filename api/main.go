@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -94,8 +95,10 @@ var (
 )
 
 func main() {
-	// os.Remove("./minitwit.db")
-	initDB()
+	_, err = os.Stat("./minitwit.db")
+	if err != nil {
+    initDB();
+	}
 
 	r := mux.NewRouter()
 	r.HandleFunc("/latest", getLatestHandler).Methods("GET")
@@ -110,22 +113,25 @@ func main() {
 }
 
 
-func initDB() (*sql.DB, error) {
+func initDB() {
+	log.Println("Initialising the database...")
+
+	os.Create("./minitwit.db")
 	db, err := sql.Open("sqlite3", "./minitwit.db")
 	if err != nil {
-			return nil, err
+		log.Println(err)
 	}
 	
-	schema, err := os.ReadFile("../schema.sql")
+	schema, err := os.ReadFile("./schema.sql")
 	if err != nil {
-		return nil, err
+		log.Println(err) 
 	}
-
+	
 	_, err = db.Exec(string(schema))
 	if err != nil {
-		return nil, err
+		log.Println(err) 
 	}
-	return db, nil
+	db.Close()
 }
 
 func connectDB() (*sql.DB, error) {

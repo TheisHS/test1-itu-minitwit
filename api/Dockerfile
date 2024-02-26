@@ -1,6 +1,7 @@
 # Downloads base-image from dockerhub which include necessary dependencies for GoLang.
 # https://hub.docker.com/_/golang
 FROM golang:1.21
+ARG DATABASE=empty.db
 
 # Environment variable to enable C code in Go application
 # ENV CGO_ENABLED=1
@@ -18,6 +19,7 @@ RUN go mod download && go mod verify
 
 # Copies the whole minitwit directory to the container
 COPY api ./
+COPY schema.sql ${DATABASE} ./
 
 # Compiles code into executable
 # -v prints names of packages as they are compiled
@@ -25,6 +27,7 @@ COPY api ./
 # ./... tells go build to build all Go packages starting from the current directory
 RUN go build -v -o /usr/local/bin/app ./...
 
+# -istest=$TEST
 # CMD sets the instruction to be executed when running the container from the image
 CMD ["app"]
 
