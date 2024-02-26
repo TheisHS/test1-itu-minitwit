@@ -130,11 +130,11 @@ jobs:
 workflows:
   build_and_deploy:
     jobs:
-      - run_tests
-          # filters:
-          #   branches:
-          #     only:
-          #       -main
+      - run_tests:
+          filters:
+            branches:
+              only:
+                -main
       - build_web:
           requires:
             - run_tests

@@ -205,3 +205,7 @@ https://stackoverflow.com/questions/43547795/how-to-share-localhost-between-two-
 Dockerfiles now have a "database" argument. If as database is passed (e.g. minitwit.db) this is copied into the image. If no database is given, the empty.db is copied instead and the gofile runs on an empty database. This is for the tests.
 
 A "run_tests" step is added to our pipeline and the build steps are made dependent on this.
+
+TODO: 
+1. Don't reset database on deployment. 
+2. Maybe parallellise the tests to make pipeline faster.
