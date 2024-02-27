@@ -134,7 +134,7 @@ workflows:
           filters:
             branches:
               only:
-                -main
+                - main
       - build_web:
           requires:
             - run_tests
