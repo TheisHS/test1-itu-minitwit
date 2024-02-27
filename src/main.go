@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -127,7 +128,10 @@ func main() {
 	login_tmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/login.html"))
 	register_tmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/register.html"))
 
-	init_db()
+	_, err = os.Stat("./minitwit.db")
+	if err != nil {
+    initDB();
+	}
 
 	r := mux.NewRouter()
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
@@ -169,22 +173,25 @@ func beforeRequest(next http.Handler) http.Handler {
     }) 
 }
 
-func init_db() (*sql.DB, error) {
+func initDB() {
+	log.Println("Initialising the database...")
+
+	os.Create("./minitwit.db")
 	db, err := sql.Open("sqlite3", "./minitwit.db")
 	if err != nil {
-			return nil, err
+		log.Println(err)
 	}
 	
-	schema, err := os.ReadFile("../schema.sql")
+	schema, err := os.ReadFile("./schema.sql")
 	if err != nil {
-		return nil, err
+		log.Println(err) 
 	}
-
+	
 	_, err = db.Exec(string(schema))
 	if err != nil {
-		return nil, err
+		log.Println(err) 
 	}
-	return db, nil
+	db.Close()
 }
 
 func getUserID(username string) (int, error) {
@@ -208,8 +215,7 @@ func getUser(user_id int) (*User) {
 
 func timelineHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session")
-	user_id, ok := session.Values["user_id"].(int) 
-	fmt.Println(user_id)
+	user_id, ok := session.Values["user_id"].(int)
 	if !ok {
 		http.Redirect(w, r, "/public_timeline", http.StatusFound)
 		return
@@ -288,8 +294,6 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	session.Save(r, w)
 	
 	timeline_tmpl.Execute(w, data)
-
-	//fmt.Println(usermessages)
 }
 
 func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
@@ -488,7 +492,6 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	session.Save(r, w)
 	
 	register_tmpl.Execute(w, data)
-	register_tmpl.Execute(os.Stdout, data)
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -523,7 +526,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, save_error.Error(), http.StatusInternalServerError)
 				return
 			}
-			fmt.Println("User ID:", session.Values["user_id"])
 			http.Redirect(w, r, "/timeline", http.StatusSeeOther)
             return
 		}
@@ -537,7 +539,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	session.Save(r, w)
 
 	login_tmpl.Execute(w, data)
-	login_tmpl.Execute(os.Stdout, data)
 }
 
 

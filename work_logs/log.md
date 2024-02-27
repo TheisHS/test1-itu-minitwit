@@ -106,10 +106,13 @@ Import encoding to be able to send requests to gravatar for profile pics.
   "crypto/md5"
   "encoding/hex"
 ```
+
 ## February 22
+
 ### Automated DigitalOcean VM provision using Vagrant
+
 We have created a Vagrantfile to automate the provisioning of a DigitalOcean remote VM.
-We use DigitalOcean as our cloud provider, as we have a $200 credit from GitHub Education. 
+We use DigitalOcean as our cloud provider, as we have a $200 credit from GitHub Education.
 Using a cloud provider like DigitalOcean is a good idea, as it allows us to deploy our application to a remote server, and not just run it locally.
 This is important, as we want to test our application in a production-like environment with the upcoming simulations. Also, this allows for on-demand vertical scaling, which is a pro as opposed to using some local server.
 
@@ -119,14 +122,90 @@ It seems a lot like virtualization with Docker, which is why we simply chose to 
 into the vm along our docker files, then we install docker and docker-compose in the VM, and then we build and run our application using the docker-compose.yaml file.
 For future use we have discussed pushing our docker image to dockerhub, in which case we can simply pull it from there and run it in the VM, with only our compose.yaml file in the VM.
 As opposed to manually creating the droplet, or curling the DigitalOcean API, we can now simply run the command:
-```$ vagrant up```. Also, automating this provisioning process ensures that we always have the same environment to work with.
+`$ vagrant up`. Also, automating this provisioning process ensures that we always have the same environment to work with.
 
 We have added our secrets to as Environment Variables to exclude them from the Vagrantfile and the repository.
-Specifically, the API key for DigitalOcean is a crucial secret to keep safe as it allows for the creation of droplets and other resources on DigitalOcean - so hopefully we don't get any unexpected expenses just yet :P 
+Specifically, the API key for DigitalOcean is a crucial secret to keep safe as it allows for the creation of droplets and other resources on DigitalOcean - so hopefully we don't get any unexpected expenses just yet :P
 
 We also added our newly created API folder (with the API that can handle the requests from the simulation) to the docker-compose.yaml file, so that it is included in the build and run process.
 
 The API will be served on port 5001 and the web application on 5000.
 We can now ssh into the VM using the command (granted that the member trying to ssh into the VM has set up an ssh key with DigitalOcean):
-```$ ssh root@<ip>```
-where ``<ip>`` is the IP of the VM we receive from DigitalOcean when we build our droplet.
+
+`$ ssh root@<ip>`
+
+where `<ip>` is the IP of the VM we receive from DigitalOcean when we build our droplet.
+
+## February 25
+
+### CI/CD Service
+
+As our code is stored on Github, we've eliminated Gitlab CI as as an option. Travis CI is only free for a single month (for students), and we've also eliminated this.
+
+In reality, it
+
+| Github Actions                                                                                     | CircleCI                                                                                                                  | Our considerations                                                                                                                                                           |
+| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Is free ... "Cheapest for people with public repositories"                                         | 3000 minutes for free pr month                                                                                            | We have a public repo                                                                                                                                                        |
+| Runs full pipeline automatically                                                                   | Can be paused and wait for human interaction                                                                              | We don't have a usecase for needing human intervention before deploying if the code passes all the tests we stup, and the CircleCI feature (even though nice) is not needed. |
+| More than CI/CD - can also automate manual tasks like generating changelogs or versioning releases | Only CI/CD, but specialised in this.                                                                                      | We only need CI/CD for now.                                                                                                                                                  |
+| Slower than CircleCI                                                                               | Faster than Github Actions                                                                                                | Do we need speed?                                                                                                                                                            |
+| Only Windows, MacOS and Linux                                                                      | Every operating system                                                                                                    | We only need Linux                                                                                                                                                           |
+| Configuration can be split in mulitple files                                                       | Single file configuration                                                                                                 | Cleaner setup with GHA?                                                                                                                                                      |
+| Docker support is still a bit buggy on GHA, works only with Linux.                                 | CircleCI has perfected its Docker support over the years to make it (almost) the de-facto environment for running builds. | We will use docker.                                                                                                                                                          |
+| More granular control by exposing all commands. Complexity increase.                               | Less complex, has built in commands for often-used services. Less control                                                 | We don't know what we need yet - so maybe more control is nice, but it being easy is also nice.                                                                              |
+
+https://coderonfleek.medium.com/circleci-vs-github-actions-a-software-engineers-perspective-14567e539b9c
+https://www.techtarget.com/searchsoftwarequality/tip/CircleCI-vs-GitHub-Actions-CI-CD-platform-comparison
+
+
+### CI/CD with CircleCI
+
+CircleCI for the pipeline: https://app.circleci.com/pipelines/circleci/WCqKgj4HsZ36SUyELrTZdu
+Docker images on DockerHub (Naddi's account)
+VM on Digital Ocean as usual, port 4000 and 4001.
+
+We had some problems with ssh'ing into the VM, but this article helped:
+
+- https://erenbasaran.medium.com/digitalocean-permission-denied-publickey-solution-6cd963049fce
+
+#### Automatic releases
+
+We will not do this yet. See article below:
+
+- https://circleci.com/blog/publishing-to-github-releases-via-circleci/
+
+```yaml
+  release:
+    triggers:
+      - schedule:
+          cron: "0 20 * * 4"
+          filters:
+            branches:
+              only:
+                - main
+```
+
+`0 20 * * 4` means "in the 0th minute, in the 20th hour, on whatever day of the month, in whatever month, on the 4th day of the week".
+
+## February 26
+
+### Tests as part of our pipeline
+
+Docker compose files should specify that the context is in the root directory but that the docker file is in a subdirectory. This is how the Dockerfiles are set up (for them to work in the pipeline), so compose files are fixed.
+
+Tests are inserted in their own directories for them to have a Dockerfile. Used this page to get the format of the compose.test files, and the command that kills the server container when the tests are done (used in next paragraph).
+https://stackoverflow.com/questions/40907954/terminate-docker-compose-when-test-container-finishes
+
+The `run-tests.sh` script builds the two images for testing the services. Then it spins up two separate containers for testing. It exits with an error code if they do not pass, which should make our pipeline fail.
+
+When running the service in one container and the python test scripts in another, I continously got a ConnectionError, which indicated that the two containers did not communicate. To fix this, I've tried many different things, but the fix that did it was make the containers run on localhost. This is as far as I'm aware not best practice, but I could not get it to work in any other way. 
+https://stackoverflow.com/questions/43547795/how-to-share-localhost-between-two-different-docker-containers
+
+Dockerfiles now have a "database" argument. If as database is passed (e.g. minitwit.db) this is copied into the image. If no database is given, the empty.db is copied instead and the gofile runs on an empty database. This is for the tests.
+
+A "run_tests" step is added to our pipeline and the build steps are made dependent on this.
+
+TODO: 
+1. Don't reset database on deployment. 
+2. Maybe parallellise the tests to make pipeline faster.

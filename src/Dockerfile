@@ -1,6 +1,7 @@
 # Downloads base-image from dockerhub which include necessary dependencies for GoLang.
 # https://hub.docker.com/_/golang
 FROM golang:1.21
+ARG DATABASE=empty.db
 
 # Environment variable to enable C code in Go application
 # ENV CGO_ENABLED=1
@@ -12,13 +13,14 @@ WORKDIR /usr/src/app
 # pre-copy/cache go.mod for pre-downloading dependencies and only redownloading them in subsequent builds if they change
 
 # COPY will copy files/directories and add them to the filesystem of the container
-COPY go.mod go.sum ./
+COPY src/go.mod src/go.sum ./
 # RUN executes commands and builds a new layer on top of the current image.
 # So, download dependencies and check the dependencies of the main module.
 RUN go mod download && go mod verify
 
 # Copies the whole minitwit directory to the container
-COPY . .
+COPY src ./
+COPY schema.sql ${DATABASE} ./
 
 # Compiles code into executable
 # -v prints names of packages as they are compiled
