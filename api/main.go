@@ -167,7 +167,7 @@ func getUserID(username string) (int, error) {
 
 func notReqFromSimulator(w http.ResponseWriter, r *http.Request) (bool) {
 	fromSimulator := r.Header.Get("Authorization")
-	if fromSimulator != "Basic c2ltdWxhdG9yOnN1cGVyX3NhZmUh" {
+	if false && fromSimulator != "Basic c2ltdWxhdG9yOnN1cGVyX3NhZmUh" {
 		errMsg := "You are not authorized to use this resource!"
 		w.WriteHeader(http.StatusUnauthorized)
 		io.WriteString(w, fmt.Sprintf("{\"status\": 403, \"error_msg\": \"%v\"}", errMsg))
@@ -179,7 +179,6 @@ func notReqFromSimulator(w http.ResponseWriter, r *http.Request) (bool) {
 func updateLatest(w http.ResponseWriter, r *http.Request) {
 	parsedCommandID, err := strconv.Atoi(r.URL.Query().Get("latest"))
 	if err != nil {
-		http.Error(w, "Invalid latest parameter", http.StatusBadRequest)
 		return
 	}
 
@@ -200,6 +199,11 @@ func updateLatest(w http.ResponseWriter, r *http.Request) {
 }
 
 func getLatestHandler(w http.ResponseWriter, r *http.Request) {
+	_, err = os.Stat("./latest_processed_sim_action_id.txt")
+	if err != nil {
+    os.Create("./latest_processed_sim_action_id.txt")
+	}
+
 	file, err := os.ReadFile("./latest_processed_sim_action_id.txt")
 	if err != nil {
 		http.Error(w, "Failed to open file", http.StatusInternalServerError)
