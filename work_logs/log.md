@@ -209,3 +209,9 @@ A "run_tests" step is added to our pipeline and the build steps are made depende
 TODO: 
 1. Don't reset database on deployment. 
 2. Maybe parallellise the tests to make pipeline faster.
+
+## February 28
+
+We want to persist our database, so it's not reset every time we rebuild our docker images - this happens on every deploy.
+We use volumes to persist the minitwit.db file:
+https://www.baeldung.com/ops/docker-mount-single-file-in-volume
