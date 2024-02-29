@@ -18,7 +18,8 @@ services:
       dockerfile: ./api/Dockerfile
     ports:
       - 5001:5001
+    # We want to mount the database file to the container so that the data persists (mount from the VM to the container)
     volumes:
-      - ./minitwit.db:/minitwit.db
+      - /usr/src/app/minitwit.db:/root/minitwit/minitwit.db
 # We can look at https://github.com/docker/awesome-compose if we want to integrate other services at some point and manage their deployment
 # like MySQL, perhaps.
