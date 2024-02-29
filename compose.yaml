@@ -10,7 +10,9 @@ services:
     ports:
       - 5000:5000
     volumes:
-      - ./minitwit.db:/minitwit.db
+      - type: bind
+        source: /usr/src/app/minitwit.db
+        target: /root/minitwit/minitwit.db
   
   apiserver:
     build:
@@ -20,6 +22,8 @@ services:
       - 5001:5001
     # We want to mount the database file to the container so that the data persists (mount from the VM to the container)
     volumes:
-      - /usr/src/app/minitwit.db:/root/minitwit/minitwit.db
+      - type: bind
+        source: /usr/src/app/minitwit.db
+        target: /root/minitwit/minitwit.db
 # We can look at https://github.com/docker/awesome-compose if we want to integrate other services at some point and manage their deployment
 # like MySQL, perhaps.
