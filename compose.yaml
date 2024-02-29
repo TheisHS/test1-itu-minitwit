@@ -25,5 +25,13 @@ services:
       - type: bind
         source: /usr/src/app/minitwit.db
         target: /root/minitwit/minitwit.db
+volumes:
+  minitwit-db:
+    external: true
+    driver_opts:
+      type: none
+      device: /usr/src/app/minitwit.db
+      o: bind
+
 # We can look at https://github.com/docker/awesome-compose if we want to integrate other services at some point and manage their deployment
 # like MySQL, perhaps.
