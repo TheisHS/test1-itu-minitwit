@@ -2,36 +2,35 @@
 # This service is built from the Dockerfile in the current directory.
 # You can add other services your application may depend on here, such as a
 # database or a cache.
+version: '3.3'
+
+networks:
+  main:
+
 services:
   webserver:
-    build:
-      context: .
-      dockerfile: ./src/Dockerfile
+    image: naddinadja/minitwit-web:latest
+    container_name: minitwit_web
+    networks:
+      - main
     ports:
-      - 5000:5000
+      - '4000:5000'
     volumes:
-      - type: bind
-        source: /usr/src/app/minitwit.db
-        target: /root/minitwit/minitwit.db
-  
+      - minitwit-db:/usr/src/app/data
+
   apiserver:
-    build:
-      context: .
-      dockerfile: ./api/Dockerfile
+    image: naddinadja/minitwit-api:latest
+    container_name: minitwit_api
+    networks:
+      - main
     ports:
-      - 5001:5001
-    # We want to mount the database file to the container so that the data persists (mount from the VM to the container)
+      - '4001:5001'
     volumes:
-      - type: bind
-        source: /usr/src/app/minitwit.db
-        target: /root/minitwit/minitwit.db
+      - minitwit-db:/usr/src/app/data
+
 volumes:
   minitwit-db:
-    external: true
-    driver_opts:
-      type: none
-      device: /usr/src/app/minitwit.db
-      o: bind
+    driver: local
 
 # We can look at https://github.com/docker/awesome-compose if we want to integrate other services at some point and manage their deployment
 # like MySQL, perhaps.
