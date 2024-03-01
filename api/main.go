@@ -225,6 +225,10 @@ func msgsHandler(w http.ResponseWriter, r *http.Request) {
 
 	no_msgs := r.URL.Query().Get("no")
 	if r.Method == http.MethodGet {
+		if no_msgs == "" {
+			io.WriteString(w, "[]")
+			return
+		}
 		rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND message.author_id = user.user_id ORDER BY message.pub_date DESC LIMIT ?", no_msgs)
 		if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
