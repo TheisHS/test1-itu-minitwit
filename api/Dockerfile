@@ -5,6 +5,8 @@ FROM golang:1.21
 # Environment variable to enable C code in Go application
 # ENV CGO_ENABLED=1
 
+VOLUME ["/usr/src/app/data"]
+
 # WORKDIR sets the directory (or creates it) in the docker image
 WORKDIR /usr/src/app
 
