@@ -3,6 +3,25 @@
 version: 2.1
 
 jobs:
+  run_api_tests:
+    docker:
+      - image:  cimg/base:2022.09
+    resource_class: medium
+    steps:
+      - checkout
+      - run:
+          name: Install Docker Compose
+          environment:
+            COMPOSE_VERSION: '1.29.2'
+          command: |
+            curl -L "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o ~/docker-compose
+            chmod +x ~/docker-compose
+            sudo mv ~/docker-compose /usr/local/bin/docker-compose
+      - setup_remote_docker
+      - run:
+          name: Run test script
+          command: |
+            sh ./run-api-tests.sh
   run_tests:
     docker:
       - image:  cimg/base:2022.09
@@ -130,6 +149,11 @@ jobs:
 workflows:
   build_and_deploy:
     jobs:
+      - run_api_tests:
+          filters:
+            branches:
+              only:
+                - main
       - run_tests:
           filters:
             branches:
@@ -140,7 +164,7 @@ workflows:
             - run_tests
       - build_api:
           requires:
-            - run_tests
+            - run_api_tests
       - deploy:
           requires:
             - build_web
