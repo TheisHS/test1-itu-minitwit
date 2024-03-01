@@ -152,7 +152,8 @@ func main() {
 }
 
 func connectDB() (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", "/data/minitwit.db")
+	db, err := sql.Open("sqlite3", "./minitwit.db")
+
 	if err != nil {
 		return nil, err
 	}
