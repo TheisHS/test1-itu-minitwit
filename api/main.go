@@ -95,7 +95,7 @@ var (
 )
 
 func main() {
-	_, err = os.Stat("./data/minitwit.db")
+	_, err = os.Stat("./minitwit.db")
 	if err != nil {
 		initDB()
 	}
@@ -115,8 +115,8 @@ func main() {
 func initDB() {
 	log.Println("Initialising the database...")
 
-	os.Create("./data/minitwit.db")
-	db, err := sql.Open("sqlite3", "./data/minitwit.db")
+	os.Create("./minitwit.db")
+	db, err := sql.Open("sqlite3", "./minitwit.db")
 	if err != nil {
 		log.Println(err)
 	}
@@ -134,7 +134,7 @@ func initDB() {
 }
 
 func connectDB() (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", "./data/minitwit.db")
+	db, err := sql.Open("sqlite3", "./minitwit.db")
 	if err != nil {
 		return nil, err
 	}
