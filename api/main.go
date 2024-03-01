@@ -115,6 +115,7 @@ func main() {
 func initDB() {
 	log.Println("Initialising the database...")
 
+
 	os.Create("./data/minitwit.db")
 	db, err := sql.Open("sqlite3", "./data/minitwit.db")
 	if err != nil {
