@@ -128,7 +128,7 @@ func main() {
 	login_tmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/login.html"))
 	register_tmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/register.html"))
 
-	_, err = os.Stat("./minitwit.db")
+	_, err = os.Stat("./data/minitwit.db")
 	if err != nil {
 		initDB()
 	}
@@ -152,7 +152,7 @@ func main() {
 }
 
 func connectDB() (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", "/data/minitwit.db")
+	db, err := sql.Open("sqlite3", "./data/minitwit.db")
 	if err != nil {
 		return nil, err
 	}
@@ -176,8 +176,8 @@ func beforeRequest(next http.Handler) http.Handler {
 func initDB() {
 	log.Println("Initialising the database...")
 
-	os.Create("./minitwit.db")
-	db, err := sql.Open("sqlite3", "./minitwit.db")
+	os.Create("./data/minitwit.db")
+	db, err := sql.Open("sqlite3", "./data/minitwit.db")
 	if err != nil {
 		log.Println(err)
 	}
