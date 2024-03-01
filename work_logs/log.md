@@ -215,3 +215,24 @@ TODO:
 We want to persist our database, so it's not reset every time we rebuild our docker images - this happens on every deploy.
 We use volumes to persist the minitwit.db file:
 https://www.baeldung.com/ops/docker-mount-single-file-in-volume
+
+## February 29
+
+Docker volumes to solve issues with persistent data.
+- Add volumes tag in bottom of compose to define the volume and its configuration
+- Then define inside the container which volume that container should have access to and be mounted with.
+- We are using the format “named volumes”, <name>:<path_to_db>
+- Code is failing because we tested some things with the path to db and this makes the tests fail.
+- Best result is being able to create the volumes (check with docker volume ls)
+- The db is not persisted after a re-deploy and this is the issue as of now
+
+## February 30
+
+We fixed a final error with the api, and prepared it for simulation start.
+
+Deciding whether to go directly for a new database setup or look at an ORM for current setup.
+We continued with an ORM for now and found inspiration in the link below.
+
+https://blog.logrocket.com/comparing-orm-packages-go/
+
+Issues with data persistency have been fixed, but a few minutes later than start of simulation.
