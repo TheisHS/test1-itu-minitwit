@@ -226,7 +226,7 @@ Docker volumes to solve issues with persistent data.
 - Best result is being able to create the volumes (check with docker volume ls)
 - The db is not persisted after a re-deploy and this is the issue as of now
 
-## February 30
+## March 1
 
 We fixed a final error with the api, and prepared it for simulation start.
 
@@ -236,3 +236,15 @@ We continued with an ORM for now and found inspiration in the link below.
 https://blog.logrocket.com/comparing-orm-packages-go/
 
 Issues with data persistency have been fixed, but a few minutes later than start of simulation.
+
+## March 2
+Looking into setting up automatic steps on pull requests. This is where unit tests, linting assurances and similar tests will take place.
+
+Making a more effective pipeline: https://circleci.com/blog/reduce-cycle-time-pull-requests/
+
+Added CodeClimate bot to project, this integration can do anything from checking test coverage to linting with a lot of different plugins and settings. For now I have added the "Golint" plugin.
+Golint:
+- Maintained by the Go developers themselves
+- Enforces coding conventions, which hopefully will improve code maintainability. 
+
+The effect of this integration will be seen on pull requests, where the bot automatically will comment on any issues or errors it finds according to the configurations we have set. We can also add a 
