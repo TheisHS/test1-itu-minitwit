@@ -68,23 +68,23 @@ type UserMessage struct {
 }
 
 type User struct {
-	User_id int
+	UserId int
 	Username string
 	Email string
-	pw_hash string
+	pwHash string
 }
 
 type Message struct {
-	message_id int
-	author_id int
+	messageId int
+	authorId int
 	Text string
-	Pub_date int
+	PubDate int
 	flagged int
 }
 
 type Error struct{
 	Status int
-	Error_msg string
+	ErrorMsg string
 }
 
 type M map[string]interface{}
@@ -220,16 +220,16 @@ func getLatestHandler(w http.ResponseWriter, r *http.Request) {
 
 func msgsHandler(w http.ResponseWriter, r *http.Request) {
 	updateLatest(w, r)
-	req_err := notReqFromSimulator(w, r)
-	if req_err { return }
+	reqErr := notReqFromSimulator(w, r)
+	if reqErr { return }
 
-	no_msgs := r.URL.Query().Get("no")
+	noMsgs := r.URL.Query().Get("no")
 	if r.Method == http.MethodGet {
-		if no_msgs == "" {
+		if noMsgs == "" {
 			io.WriteString(w, "[]")
 			return
 		}
-		rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND message.author_id = user.user_id ORDER BY message.pub_date DESC LIMIT ?", no_msgs)
+		rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND message.author_id = user.user_id ORDER BY message.pub_date DESC LIMIT ?", noMsgs)
 		if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -240,12 +240,12 @@ func msgsHandler(w http.ResponseWriter, r *http.Request) {
 		for rows.Next() {
 			var message Message
 			var author User
-			err = rows.Scan(&message.message_id, &message.author_id, &message.Text, &message.Pub_date, &message.flagged, &author.User_id, &author.Username, &author.Email, &author.pw_hash)
+			err = rows.Scan(&message.messageId, &message.authorId, &message.Text, &message.PubDate, &message.flagged, &author.UserId, &author.Username, &author.Email, &author.pwHash)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			filteredMessage := M{"content": message.Text, "pub_date": message.Pub_date, "user": author.Username}
+			filteredMessage := M{"content": message.Text, "pub_date": message.PubDate, "user": author.Username}
 			filteredMessages = append(filteredMessages, filteredMessage)
 		}	
 
@@ -256,10 +256,10 @@ func msgsHandler(w http.ResponseWriter, r *http.Request) {
 
 func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 	updateLatest(w, r)
-	req_err := notReqFromSimulator(w, r)
-	if req_err { return }
+	reqErr := notReqFromSimulator(w, r)
+	if reqErr { return }
 	
-	no_msgs := r.URL.Query().Get("no")
+	noMsgs := r.URL.Query().Get("no")
 	vars := mux.Vars(r)
 	username := vars["username"]
 	userID, err := getUserID(username)
@@ -268,7 +268,7 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method == http.MethodGet {
-		rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND user.user_id = message.author_id AND user.user_id = ? ORDER BY message.pub_date DESC LIMIT ?", userID, no_msgs)
+		rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND user.user_id = message.author_id AND user.user_id = ? ORDER BY message.pub_date DESC LIMIT ?", userID, noMsgs)
 		if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -279,12 +279,12 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 		for rows.Next() {
 			var message Message
 			var author User
-			err = rows.Scan(&message.message_id, &message.author_id, &message.Text, &message.Pub_date, &message.flagged, &author.User_id, &author.Username, &author.Email, &author.pw_hash)
+			err = rows.Scan(&message.messageId, &message.authorId, &message.Text, &message.PubDate, &message.flagged, &author.UserId, &author.Username, &author.Email, &author.pwHash)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			filteredMessage := M{"content": message.Text, "pub_date": message.Pub_date, "user": author.Username}
+			filteredMessage := M{"content": message.Text, "pub_date": message.PubDate, "user": author.Username}
 			filteredMessages = append(filteredMessages, filteredMessage)
 		}	
 
@@ -309,8 +309,8 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 
 func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 	updateLatest(w, r)
-	req_err := notReqFromSimulator(w, r)
-	if req_err { return }
+	reqErr := notReqFromSimulator(w, r)
+	if reqErr { return }
 	
 	vars := mux.Vars(r)
 	username := vars["username"]
@@ -363,8 +363,8 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodGet {
-		no_followers, _ := strconv.Atoi(r.URL.Query().Get("no"))
-		rows, err := db.Query("SELECT user.username FROM user INNER JOIN follower ON follower.whom_id=user.user_id WHERE follower.who_id=? LIMIT ?", whoID, no_followers)
+		noFollowers, _ := strconv.Atoi(r.URL.Query().Get("no"))
+		rows, err := db.Query("SELECT user.username FROM user INNER JOIN follower ON follower.whom_id=user.user_id WHERE follower.who_id=? LIMIT ?", whoID, noFollowers)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -380,17 +380,17 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			followers = append(followers, username)
 		}
-		follower_json, _ := json.Marshal(followers)
-		io.WriteString(w, fmt.Sprintf("{\"follows\": %v}", string(follower_json)))
+		followerJson, _ := json.Marshal(followers)
+		io.WriteString(w, fmt.Sprintf("{\"follows\": %v}", string(followerJson)))
 	}
 }
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
 	updateLatest(w, r)
-	req_err := notReqFromSimulator(w, r)
-	if req_err { return }
+	reqErr := notReqFromSimulator(w, r)
+	if reqErr { return }
 
-	var register_error string
+	var registerError string
 	if r.Method == http.MethodPost {
 		type RegisterData struct {
 			Username string
@@ -399,18 +399,18 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		var data RegisterData
 		json.NewDecoder(r.Body).Decode(&data)
-		user_id, _ := getUserID(data.Username)
+		userId, _ := getUserID(data.Username)
 		if len(data.Username) == 0 {
-			register_error = "You have to enter a username"
+			registerError = "You have to enter a username"
 		} else if len(data.Email) == 0 || !strings.Contains(data.Email, "@") {
-			register_error = "You have to enter a valid email address"
+			registerError = "You have to enter a valid email address"
 		} else if len(data.Pwd) == 0 {
-			register_error = "You have to enter a password"
-		} else if user_id != 0 {
-			register_error = "The username is already taken"
+			registerError = "You have to enter a password"
+		} else if userId != 0 {
+			registerError = "The username is already taken"
 		} else {
-			pw_hash := GeneratePasswordHash(data.Pwd)
-			_, err := db.Exec("insert into user (username, email, pw_hash) values (?, ?, ?)", data.Username, data.Email, pw_hash)
+			pwHash := GeneratePasswordHash(data.Pwd)
+			_, err := db.Exec("insert into user (username, email, pw_hash) values (?, ?, ?)", data.Username, data.Email, pwHash)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -420,10 +420,10 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.WriteHeader(http.StatusBadRequest)
-		error_data, _ := json.Marshal(Error {
+		errorData, _ := json.Marshal(Error {
 			Status: 400,
-			Error_msg: register_error,
+			ErrorMsg: registerError,
 		})
-		io.WriteString(w, string(error_data))
+		io.WriteString(w, string(errorData))
 	}
 }
