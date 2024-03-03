@@ -68,28 +68,28 @@ type UserMessage struct {
 }
 
 type User struct {
-	User_id int
+	UserID int
 	Username string
 	Email string
-	pw_hash string
+	pwHash string
 }
 
 type Message struct {
-	message_id int
-	author_id int
+	messageID int
+	authorID int
 	Text string
-	Pub_date int
+	PubDate int
 	flagged int
 }
 
 type Follower struct {
-	who_id int
-	whom_id int
+	whoID int
+	whomID int
 }
 
 type TimelinePageData struct {
 	User *User
-	Profile_user *User
+	ProfileUser *User
 	IsPublic bool
 	Followed bool
 	Usermessages []UserMessage
@@ -103,13 +103,13 @@ type LoginPageData struct {
 }
 
 var (
-	timeline_tmpl *template.Template
-	login_tmpl *template.Template
-	register_tmpl *template.Template
+	timelineTmpl *template.Template
+	loginTmpl *template.Template
+	registerTmpl *template.Template
 	db *sql.DB
 	err error
 	store = sessions.NewCookieStore([]byte("bb9cfb7ab2a6e36d683b0b209f96bb33"))
-	PER_PAGE = 30
+	perPage = 30
 )
 
 func main() {
@@ -124,9 +124,9 @@ func main() {
     //Secure:   true,
 	}
 
-	timeline_tmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/timeline.html"))
-	login_tmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/login.html"))
-	register_tmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/register.html"))
+	timelineTmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/timeline.html"))
+	loginTmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/login.html"))
+	registerTmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/register.html"))
 
 	_, err = os.Stat("./data/minitwit.db")
 	if err != nil {
@@ -203,27 +203,27 @@ func getUserID(username string) (int, error) {
     return userID, nil
 }
 
-func getUser(user_id int) (*User) {
+func getUser(userID int) (*User) {
 	var user User
-	err = db.QueryRow("SELECT user_id, username, email, pw_hash FROM user WHERE user_id = ?", user_id).Scan(&user.User_id, &user.Username, &user.Email, &user.pw_hash)
+	err = db.QueryRow("SELECT user_id, username, email, pw_hash FROM user WHERE user_id = ?", userID).Scan(&user.UserID, &user.Username, &user.Email, &user.pwHash)
 	if err == sql.ErrNoRows {
 		return nil
-	} else {
-		return &user
 	}
+	
+	return &user
 }
 
 func timelineHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session")
-	user_id, ok := session.Values["user_id"].(int)
+	userID, ok := session.Values["user_id"].(int)
 	if !ok {
 		http.Redirect(w, r, "/public_timeline", http.StatusFound)
 		return
 	}
-	user := getUser(user_id)
+	user := getUser(userID)
 	var usermessages []UserMessage
 	
-	rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND message.author_id = user.user_id AND (user.user_id = ? OR user.user_id in (SELECT whom_id FROM follower WHERE who_id = ?)) ORDER BY message.pub_date DESC LIMIT ?", user_id, user_id, PER_PAGE)
+	rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND message.author_id = user.user_id AND (user.user_id = ? OR user.user_id in (SELECT whom_id FROM follower WHERE who_id = ?)) ORDER BY message.pub_date DESC LIMIT ?", userID, userID, perPage)
 	if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
@@ -233,7 +233,7 @@ func timelineHandler(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var message Message
 		var author User
-		err = rows.Scan(&message.message_id, &message.author_id, &message.Text, &message.Pub_date, &message.flagged, &author.User_id, &author.Username, &author.Email, &author.pw_hash)
+		err = rows.Scan(&message.messageID, &message.authorID, &message.Text, &message.PubDate, &message.flagged, &author.UserID, &author.Username, &author.Email, &author.pwHash)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -250,7 +250,7 @@ func timelineHandler(w http.ResponseWriter, r *http.Request) {
 
 	session.Save(r, w)
 	
-	timeline_tmpl.Execute(w, data)
+	timelineTmpl.Execute(w, data)
 
 	//rnd.HTML(w, http.StatusOK, "timeline", nil)
 }
@@ -258,13 +258,13 @@ func timelineHandler(w http.ResponseWriter, r *http.Request) {
 func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	var user *User
 	session, _ := store.Get(r, "session")
-	user_id, ok := session.Values["user_id"].(int) 
+	userID, ok := session.Values["user_id"].(int) 
 	if ok {
-		user = getUser(user_id)
+		user = getUser(userID)
 	}
 	var usermessages []UserMessage
 
-  	rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND message.author_id = user.user_id ORDER BY message.pub_date DESC LIMIT ?", PER_PAGE)
+  	rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND message.author_id = user.user_id ORDER BY message.pub_date DESC LIMIT ?", perPage)
   	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -274,7 +274,7 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var message Message
 		var user User
-		err = rows.Scan(&message.message_id, &message.author_id, &message.Text, &message.Pub_date, &message.flagged, &user.User_id, &user.Username, &user.Email, &user.pw_hash)
+		err = rows.Scan(&message.messageID, &message.authorID, &message.Text, &message.PubDate, &message.flagged, &user.UserID, &user.Username, &user.Email, &user.pwHash)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -293,7 +293,7 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 
 	session.Save(r, w)
 	
-	timeline_tmpl.Execute(w, data)
+	timelineTmpl.Execute(w, data)
 }
 
 func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
@@ -302,7 +302,7 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	var user User
 
 	row := db.QueryRow("SELECT * FROM user WHERE username = ?", username)
-	err := row.Scan(&user.User_id, &user.Username, &user.Email, &user.pw_hash)
+	err := row.Scan(&user.UserID, &user.Username, &user.Email, &user.pwHash)
 	if err != nil {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
@@ -314,7 +314,7 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	userID, ok := session.Values["user_id"].(int)
 
 	if ok {
-		row := db.QueryRow("SELECT 1 FROM follower WHERE who_id = ? AND whom_id = ?", userID, user.User_id)
+		row := db.QueryRow("SELECT 1 FROM follower WHERE who_id = ? AND whom_id = ?", userID, user.UserID)
 		err := row.Scan(&followed)
 		if err == nil {
 			followed = true
@@ -322,9 +322,9 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var usermessages []UserMessage
-	var logged_in_user *User = getUser(userID)
+	var loggedInUser *User = getUser(userID)
 
-	rows, err := db.Query("select message.*, user.* from message, user where user.user_id = message.author_id and user.user_id = ? order by message.pub_date desc limit ?", user.User_id, 30)
+	rows, err := db.Query("select message.*, user.* from message, user where user.user_id = message.author_id and user.user_id = ? order by message.pub_date desc limit ?", user.UserID, 30)
 	if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
@@ -334,7 +334,7 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var message Message
 		var user User
-		err = rows.Scan(&message.message_id, &message.author_id, &message.Text, &message.Pub_date, &message.flagged, &user.User_id, &user.Username, &user.Email, &user.pw_hash)
+		err = rows.Scan(&message.messageID, &message.authorID, &message.Text, &message.PubDate, &message.flagged, &user.UserID, &user.Username, &user.Email, &user.pwHash)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -345,8 +345,8 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 
 	// for rendering the HTML template
 	data := TimelinePageData{
-		User: logged_in_user,
-		Profile_user: &user,
+		User: loggedInUser,
+		ProfileUser: &user,
 		Followed: followed,
 		Usermessages: usermessages,
 		Flashes: session.Flashes(),
@@ -354,7 +354,7 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 
 	session.Save(r, w)
 	
-	timeline_tmpl.Execute(w, data)
+	timelineTmpl.Execute(w, data)
 }
 
 func followUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -457,27 +457,27 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/timeline", http.StatusSeeOther)
 		return
 	}
-	var register_error string
+	var registerError string
 	if r.Method == http.MethodPost {
 		var user User
 		username := r.FormValue("username")
-		user_id, _ := getUserID(username)
+		userID, _ := getUserID(username)
 		email := r.FormValue("email")
 		password := r.FormValue("password")
 		password2 := r.FormValue("password2")
 		if len(username) == 0 {
-			register_error = "You have to enter a username"
+			registerError = "You have to enter a username"
 		} else if len(email) == 0 || !strings.Contains(email, "@") {
-			register_error = "You have to enter a valid email address"
+			registerError = "You have to enter a valid email address"
 		} else if len(password) == 0 {
-			register_error = "You have to enter a password"
+			registerError = "You have to enter a password"
 		} else if password != password2 {
-			register_error = "The two passwords do not match"
-		} else if user_id != 0 {
-			register_error = "The username is already taken"
+			registerError = "The two passwords do not match"
+		} else if userID != 0 {
+			registerError = "The username is already taken"
 		} else {
-			pw_hash := GeneratePasswordHash(password)
-			err = db.QueryRow("insert into user (username, email, pw_hash) values (?, ?, ?)", username, email, pw_hash).Scan(&user.User_id, &user.Username, &user.pw_hash)
+			pwHash := GeneratePasswordHash(password)
+			err = db.QueryRow("insert into user (username, email, pw_hash) values (?, ?, ?)", username, email, pwHash).Scan(&user.UserID, &user.Username, &user.pwHash)
 			session.AddFlash("You were successfully registered and can login now")
 			session.Save(r, w)
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
@@ -485,13 +485,13 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	data := LoginPageData{
-		Error: register_error,
+		Error: registerError,
 		Flashes: session.Flashes(),
 	}
 
 	session.Save(r, w)
 	
-	register_tmpl.Execute(w, data)
+	registerTmpl.Execute(w, data)
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -506,24 +506,24 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	var login_error string
+	var loginError string
 	
 	if r.Method == http.MethodPost {
 		var user User
 		username := r.FormValue("username")
 		password := r.FormValue("password")
 
-		err = db.QueryRow("SELECT user_id, username, pw_hash FROM user WHERE username = ?", username).Scan(&user.User_id, &user.Username, &user.pw_hash)
+		err = db.QueryRow("SELECT user_id, username, pw_hash FROM user WHERE username = ?", username).Scan(&user.UserID, &user.Username, &user.pwHash)
 		if err == sql.ErrNoRows {
-			login_error = "Invalid username"
-		} else if !CheckPasswordHash(password, user.pw_hash) { 
-			login_error = "Invalid password"
+			loginError = "Invalid username"
+		} else if !CheckPasswordHash(password, user.pwHash) { 
+			loginError = "Invalid password"
 		} else {
-			session.Values["user_id"] = user.User_id
+			session.Values["user_id"] = user.UserID
 			session.AddFlash("You were logged in")
-			save_error := session.Save(r, w)
-			if save_error != nil {
-				http.Error(w, save_error.Error(), http.StatusInternalServerError)
+			saveError := session.Save(r, w)
+			if saveError != nil {
+				http.Error(w, saveError.Error(), http.StatusInternalServerError)
 				return
 			}
 			http.Redirect(w, r, "/timeline", http.StatusSeeOther)
@@ -532,13 +532,13 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	data := LoginPageData{
-		Error: login_error,
+		Error: loginError,
 		Flashes: session.Flashes(),
 	}
 	
 	session.Save(r, w)
 
-	login_tmpl.Execute(w, data)
+	loginTmpl.Execute(w, data)
 }
 
 
@@ -555,18 +555,13 @@ func GetMD5Hash(text string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-func gravatar_url(email string, size int) (string) {
-	// Return the gravatar image for the given email address.
-	return fmt.Sprintf("http://www.gravatar.com/avatar/%v?d=identicon&s=%v", GetMD5Hash(email), size)
-}
-
 func (u User) Gravatar(size int) (string) {
 	// Return the gravatar image for the user's email address.
 	return fmt.Sprintf("http://www.gravatar.com/avatar/%v?d=identicon&s=%v", GetMD5Hash(u.Email), size)
 }
 
-func (m Message) Format_datetime() (string) {
+func (m Message) FormatDatetime() (string) {
 	// Format a timestamp for display.
-	t := time.Unix(int64(m.Pub_date), 0)
+	t := time.Unix(int64(m.PubDate), 0)
 	return t.Local().Format(time.ANSIC)
 }
