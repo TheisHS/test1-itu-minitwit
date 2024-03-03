@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"io"
 	"log"
@@ -21,6 +20,9 @@ import (
 
 	"github.com/gorilla/mux"
 	_ "github.com/mattn/go-sqlite3"
+
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 const (
@@ -68,17 +70,24 @@ type UserMessage struct {
 }
 
 type User struct {
-	UserID int
+	UserID int     				`gorm:"primaryKey"`
+  CreatedAt time.Time
+  UpdatedAt time.Time
 	Username string
 	Email string
 	pwHash string
 }
-
+type Follower struct {
+	whoID int
+	whomID int
+}
 type Message struct {
-	messageID int
+	messageID int  				`gorm:"primaryKey"`
+  CreatedAt time.Time
+  UpdatedAt time.Time
 	authorID int
 	Text string
-	PubDate int
+	PubDate int64
 	flagged int
 }
 
@@ -90,7 +99,7 @@ type Error struct{
 type M map[string]interface{}
 
 var (
-	db *sql.DB
+	db *gorm.DB
 	err error
 )
 
@@ -98,6 +107,11 @@ func main() {
 	_, err = os.Stat("./data/minitwit.db")
 	if err != nil {
     initDB();
+	} else {
+		db, err = gorm.Open(sqlite.Open("./data/minitwit.db"), &gorm.Config{})
+		db.Table("user").AutoMigrate(&User{})
+		db.Table("follower").AutoMigrate(&Follower{})
+		db.Table("message").AutoMigrate(&Message{})
 	}
 
 	r := mux.NewRouter()
@@ -108,7 +122,7 @@ func main() {
 	r.HandleFunc("/fllws/{username}", fllwsUserHandler).Methods("GET", "POST")
 
 	fmt.Println("Server is running on port 5001")
-	r.Use(beforeRequest)
+	// r.Use(beforeRequest)
   http.ListenAndServe(":5001", r)
 }
 
@@ -117,52 +131,45 @@ func initDB() {
 	log.Println("Initialising the database...")
 
 	os.Create("./data/minitwit.db")
-	db, err := sql.Open("sqlite3", "./data/minitwit.db")
+	db, err = gorm.Open(sqlite.Open("./data/minitwit.db"), &gorm.Config{})
 	if err != nil {
 		log.Println(err)
 	}
 	
-	schema, err := os.ReadFile("./schema.sql")
-	if err != nil {
-		log.Println(err) 
-	}
-	
-	_, err = db.Exec(string(schema))
-	if err != nil {
-		log.Println(err) 
-	}
-	db.Close()
+	db.AutoMigrate(&User{}, &Follower{}, &Message{})
+	// db.AutoMigrate(&Follower{})
+	// db.AutoMigrate(&Message{})
 }
 
-func connectDB() (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", "./data/minitwit.db")
-	if err != nil {
-			return nil, err
-	}
-	return db, nil
-}
+// func connectDB() (*sql.DB, error) {
+// 	db, err = gorm.Open(sqlite.Open("./data/minitwit.db"), &gorm.Config{})
+// 	if err != nil {
+// 			return nil, err
+// 	}
+// 	return db, nil
+// }
 
-func beforeRequest(next http.Handler) http.Handler {
-  return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Logic to be executed before passing the request to the main handler
-		db, err = connectDB()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		defer db.Close()
-		// Pass the request to the next handler in the chain
-		next.ServeHTTP(w, r)
-  }) 
-}
+// func beforeRequest(next http.Handler) http.Handler {
+//   return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		// Logic to be executed before passing the request to the main handler
+// 		db, err = connectDB()
+// 		if err != nil {
+// 			http.Error(w, err.Error(), http.StatusInternalServerError)
+// 			return
+// 		}
+// 		defer db.Close()
+// 		// Pass the request to the next handler in the chain
+// 		next.ServeHTTP(w, r)
+//   }) 
+// }
 
 func getUserID(username string) (int, error) {
-    var userID int
-    err = db.QueryRow("SELECT user_id FROM user WHERE username = ?", username).Scan(&userID)
-    if err != nil {
-        return 0, err
-    }
-    return userID, nil
+	var user User
+	result := db.Table("user").Where(&User{Username: username}).First(&user)
+	if result.Error != nil {
+			return 0, result.Error
+	}
+  return user.UserID, nil
 }
 
 func notReqFromSimulator(w http.ResponseWriter, r *http.Request) (bool) {
@@ -223,29 +230,43 @@ func msgsHandler(w http.ResponseWriter, r *http.Request) {
 	reqErr := notReqFromSimulator(w, r)
 	if reqErr { return }
 
-	noMsgs := r.URL.Query().Get("no")
 	if r.Method == http.MethodGet {
+		noMsgs := r.URL.Query().Get("no")
 		if noMsgs == "" {
 			io.WriteString(w, "[]")
 			return
 		}
-		rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND message.author_id = user.user_id ORDER BY message.pub_date DESC LIMIT ?", noMsgs)
+		
+		limit, err := strconv.Atoi(noMsgs)
 		if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-			}
+			io.WriteString(w, "[]")
+			return
+		}
+
+		rows, err := db.Limit(limit).Table("user").Select("message.text, message.pub_date, user.username").Joins("join message on message.author_id = user.user_id").Order("message.pub_date desc").Rows()
+		
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		defer rows.Close()
 	
 		var filteredMessages []M
 		for rows.Next() {
-			var message Message
-			var author User
-			err = rows.Scan(&message.messageID, &message.authorID, &message.Text, &message.PubDate, &message.flagged, &author.UserID, &author.Username, &author.Email, &author.pwHash)
+			type MessageDTO struct {
+				text string
+				pubdate string
+				username string
+			}
+			var dto MessageDTO
+
+
+			err = rows.Scan(&dto.text, &dto.pubdate, &dto.username)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			filteredMessage := M{"content": message.Text, "pub_date": message.PubDate, "user": author.Username}
+			filteredMessage := M{"content": dto.text, "pub_date": dto.pubdate, "user": dto.username}
 			filteredMessages = append(filteredMessages, filteredMessage)
 		}	
 
@@ -258,8 +279,7 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 	updateLatest(w, r)
 	reqErr := notReqFromSimulator(w, r)
 	if reqErr { return }
-	
-	noMsgs := r.URL.Query().Get("no")
+
 	vars := mux.Vars(r)
 	username := vars["username"]
 	userID, err := getUserID(username)
@@ -268,7 +288,20 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method == http.MethodGet {
-		rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND user.user_id = message.author_id AND user.user_id = ? ORDER BY message.pub_date DESC LIMIT ?", userID, noMsgs)
+		noMsgs := r.URL.Query().Get("no")
+		if noMsgs == "" {
+			io.WriteString(w, "[]")
+			return
+		}
+
+		limit, err := strconv.Atoi(noMsgs)
+		if err != nil {
+			io.WriteString(w, "[]")
+			return
+		}
+
+		rows, err := db.Limit(limit).Table("user").Select("message.text, message.pub_date, user.username").Joins("join message on message.author_id = user.user_id").Where("user.user_id = ? AND message.flagged = 0", userID).Order("message.pub_date desc").Rows()
+		
 		if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -277,16 +310,22 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 	
 		var filteredMessages []M
 		for rows.Next() {
-			var message Message
-			var author User
-			err = rows.Scan(&message.messageID, &message.authorID, &message.Text, &message.PubDate, &message.flagged, &author.UserID, &author.Username, &author.Email, &author.pwHash)
+			type MessageDTO struct {
+				text string
+				pubdate string
+				username string
+			}
+			var dto MessageDTO
+
+
+			err = rows.Scan(&dto.text, &dto.pubdate, &dto.username)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			filteredMessage := M{"content": message.Text, "pub_date": message.PubDate, "user": author.Username}
+			filteredMessage := M{"content": dto.text, "pub_date": dto.pubdate, "user": dto.username}
 			filteredMessages = append(filteredMessages, filteredMessage)
-		}	
+		}
 
 		data, _ := json.Marshal(filteredMessages)
 		io.WriteString(w, string(data))
@@ -296,8 +335,10 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		var data RegisterData
 		json.NewDecoder(r.Body).Decode(&data)
-		_, err := db.Exec("INSERT INTO message (author_id, text, pub_date, flagged) VALUES (?, ?, ?, 0)", userID, data.Content, time.Now().Unix())
-		if err != nil {
+
+		newMessage := Message { authorID: userID, Text: data.Content, PubDate: time.Now().Unix() }
+		result := db.Create(&newMessage)
+		if result.Error != nil {
 			http.Error(w, "Database error", http.StatusInternalServerError)
       return
 		}
@@ -316,8 +357,8 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 	username := vars["username"]
 	whoID, err := getUserID(username)
 	if err != nil {
-			http.Error(w, "User not found", http.StatusNotFound)
-			return
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
 	}
 
 	type FollowsData struct {
@@ -335,10 +376,11 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "User not found", http.StatusNotFound)
 				return
 			}
-			_, err = db.Exec("INSERT INTO follower (who_id, whom_id) VALUES (?, ?)", whoID, whomID)
-			if err != nil {
-					http.Error(w, "Database error", http.StatusInternalServerError)
-					return
+			newFollower := Follower {whoID: whoID, whomID: whomID}
+			result := db.Create(&newFollower)
+			if result.Error != nil {
+				http.Error(w, "Database error", http.StatusInternalServerError)
+				return
 			}
 			w.WriteHeader(http.StatusNoContent)
 			io.WriteString(w, "")
@@ -351,8 +393,8 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "User not found", http.StatusNotFound)
 				return
 			}
-			_, err = db.Exec("DELETE FROM follower WHERE who_id=? and WHOM_ID=?", whoID, whomID)
-			if err != nil {
+			result := db.Where("who_id = ? AND whom_id = ?", whoID, whomID).Delete(&Follower{})
+			if result.Error != nil {
 					http.Error(w, "Database error", http.StatusInternalServerError)
 					return
 			}
@@ -363,8 +405,17 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodGet {
-		noFollowers, _ := strconv.Atoi(r.URL.Query().Get("no"))
-		rows, err := db.Query("SELECT user.username FROM user INNER JOIN follower ON follower.whom_id=user.user_id WHERE follower.who_id=? LIMIT ?", whoID, noFollowers)
+		noFollowers := r.URL.Query().Get("no")
+		if noFollowers == "" {
+			io.WriteString(w, "[]")
+			return
+		}
+		limit, err := strconv.Atoi(noFollowers)
+		if err != nil {
+			io.WriteString(w, "[]")
+			return
+		}
+		rows, err := db.Limit(limit).Table("user").Select("user.username").Joins("inner join follower on follower.whom_id = user.user_id").Where("follower.who_id = ?", whoID).Rows()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -410,8 +461,10 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 			registerError = "The username is already taken"
 		} else {
 			pwHash := GeneratePasswordHash(data.Pwd)
-			_, err := db.Exec("insert into user (username, email, pw_hash) values (?, ?, ?)", data.Username, data.Email, pwHash)
-			if err != nil {
+
+			newUser := User { Username: data.Username, Email: data.Email, pwHash: pwHash }
+			result := db.Create(&newUser)
+			if result.Error != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}

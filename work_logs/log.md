@@ -248,3 +248,17 @@ Golint:
 - Enforces coding conventions, which hopefully will improve code maintainability. 
 
 The effect of this integration will be seen on pull requests, where the bot automatically will comment on any issues or errors it finds according to the configurations we have set. We can also add a 
+
+## March 3
+
+### Creating an ORM
+
+We have selected GORM, as it is said to be beginner friendly. https://blog.logrocket.com/comparing-orm-packages-go/
+
+```Bash
+go get -u gorm.io/gorm
+go get -u gorm.io/driver/sqlite
+```
+
+We have implemented this in the api/main.go, but are still getting some errors. This is probably due to using a database that already exists.
+The code is not much nicer than it was when using pure sql (if it even is nicer), so we will reconsider using GORM.
