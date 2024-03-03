@@ -68,15 +68,15 @@ type UserMessage struct {
 }
 
 type User struct {
-	UserId int
+	UserID int
 	Username string
 	Email string
 	pwHash string
 }
 
 type Message struct {
-	messageId int
-	authorId int
+	messageID int
+	authorID int
 	Text string
 	PubDate int
 	flagged int
@@ -240,7 +240,7 @@ func msgsHandler(w http.ResponseWriter, r *http.Request) {
 		for rows.Next() {
 			var message Message
 			var author User
-			err = rows.Scan(&message.messageId, &message.authorId, &message.Text, &message.PubDate, &message.flagged, &author.UserId, &author.Username, &author.Email, &author.pwHash)
+			err = rows.Scan(&message.messageID, &message.authorID, &message.Text, &message.PubDate, &message.flagged, &author.UserID, &author.Username, &author.Email, &author.pwHash)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -279,7 +279,7 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 		for rows.Next() {
 			var message Message
 			var author User
-			err = rows.Scan(&message.messageId, &message.authorId, &message.Text, &message.PubDate, &message.flagged, &author.UserId, &author.Username, &author.Email, &author.pwHash)
+			err = rows.Scan(&message.messageID, &message.authorID, &message.Text, &message.PubDate, &message.flagged, &author.UserID, &author.Username, &author.Email, &author.pwHash)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -380,8 +380,8 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			followers = append(followers, username)
 		}
-		followerJson, _ := json.Marshal(followers)
-		io.WriteString(w, fmt.Sprintf("{\"follows\": %v}", string(followerJson)))
+		followerJSON, _ := json.Marshal(followers)
+		io.WriteString(w, fmt.Sprintf("{\"follows\": %v}", string(followerJSON)))
 	}
 }
 
@@ -399,14 +399,14 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		var data RegisterData
 		json.NewDecoder(r.Body).Decode(&data)
-		userId, _ := getUserID(data.Username)
+		userID, _ := getUserID(data.Username)
 		if len(data.Username) == 0 {
 			registerError = "You have to enter a username"
 		} else if len(data.Email) == 0 || !strings.Contains(data.Email, "@") {
 			registerError = "You have to enter a valid email address"
 		} else if len(data.Pwd) == 0 {
 			registerError = "You have to enter a password"
-		} else if userId != 0 {
+		} else if userID != 0 {
 			registerError = "The username is already taken"
 		} else {
 			pwHash := GeneratePasswordHash(data.Pwd)

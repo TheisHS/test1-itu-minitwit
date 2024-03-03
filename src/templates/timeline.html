@@ -14,7 +14,7 @@
 {{ if .User }} 
   {{ if .ProfileUser }}
     <div class="followstatus">
-      {{ if eq .User.UserId .ProfileUser.UserId }} 
+      {{ if eq .User.UserID .ProfileUser.UserID }} 
         This is you! 
       {{ else }} 
         {{ if .Followed }}
