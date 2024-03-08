@@ -14,8 +14,6 @@ services:
       - main
     ports:
       - '4000:5000'
-    volumes:
-      - db:/usr/src/app
   
   apiserver:
     build:
@@ -25,15 +23,6 @@ services:
       - main
     ports:
       - '4001:5001'
-    volumes:
-      - db:/usr/src/app
 
-volumes:
-  db:
-    driver: local
-    driver_opts:
-      type: none
-      device: ~/minitwit
-      o: bind
 # We can look at https://github.com/docker/awesome-compose if we want to integrate other services at some point and manage their deployment
 # like MySQL, perhaps.
