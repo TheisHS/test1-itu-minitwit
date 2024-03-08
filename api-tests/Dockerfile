@@ -8,6 +8,4 @@ COPY ./api-tests ./
 COPY ../minitwit.db .
 COPY ../schema.sql .
 
-RUN go mod download && go mod verify
-
 CMD ["pytest", "api_sim_test.py"]
