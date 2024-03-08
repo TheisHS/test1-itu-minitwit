@@ -8,6 +8,4 @@ COPY ./src-tests ./
 COPY ../minitwit.db .
 COPY ../schema.sql .
 
-RUN go mod download && go mod verify
-
 CMD ["pytest", "refactored_tests.py"]
