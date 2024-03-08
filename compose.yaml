@@ -14,8 +14,9 @@ services:
       - main
     ports:
       - '4000:5000'
-    volumes:
-      - db:/usr/src/app
+    depends_on:
+      - prometheus
+      - grafana
   
   apiserver:
     build:
@@ -25,15 +26,26 @@ services:
       - main
     ports:
       - '4001:5001'
-    volumes:
-      - db:/usr/src/app
+    depends_on:
+      - prometheus
+      - grafana
 
-volumes:
-  db:
-    driver: local
-    driver_opts:
-      type: none
-      device: ~/minitwit
-      o: bind
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - main
+
+  grafana:
+    image: grafana/grafana:10.2.4
+    ports:
+      - "3000:3000"
+    networks:
+      - main
+
 # We can look at https://github.com/docker/awesome-compose if we want to integrate other services at some point and manage their deployment
 # like MySQL, perhaps.

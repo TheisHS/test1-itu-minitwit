@@ -402,3 +402,8 @@ FodyWeavers.xsd
 *.sln.iml
 
 *.exe
+
+*/data
+src/schema.sql
+api/schema.sql
+*/.pytest_cache
