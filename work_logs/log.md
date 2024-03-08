@@ -248,3 +248,10 @@ Golint:
 - Enforces coding conventions, which hopefully will improve code maintainability. 
 
 The effect of this integration will be seen on pull requests, where the bot automatically will comment on any issues or errors it finds according to the configurations we have set. We can also add a 
+
+## March 8
+We have set up Prometheus with Grafana.
+
+We chose these tools as they were directly supported and had substantial documentation online. In addition these were also the tools that were introduced to us in class, and we have not found any arguments for picking other tools.
+
+We have only set up three simple prometheus monitoring values, however our setup makes it easy to extend with further values after deliberating on what we will need to monitor and why.
