@@ -238,6 +238,7 @@ https://blog.logrocket.com/comparing-orm-packages-go/
 Issues with data persistency have been fixed, but a few minutes later than start of simulation.
 
 ## March 2
+
 Looking into setting up automatic steps on pull requests. This is where unit tests, linting assurances and similar tests will take place.
 
 Making a more effective pipeline: https://circleci.com/blog/reduce-cycle-time-pull-requests/
@@ -250,8 +251,34 @@ Golint:
 The effect of this integration will be seen on pull requests, where the bot automatically will comment on any issues or errors it finds according to the configurations we have set. We can also add a 
 
 ## March 8
+
 We have set up Prometheus with Grafana.
 
 We chose these tools as they were directly supported and had substantial documentation online. In addition these were also the tools that were introduced to us in class, and we have not found any arguments for picking other tools.
 
 We have only set up three simple prometheus monitoring values, however our setup makes it easy to extend with further values after deliberating on what we will need to monitor and why.
+
+## March 12
+
+For prometheus and grafana, we had 3 example metrics running for setting up monitoring. Today I've looked into different metrics that could be beneficial to monitor:
+- Total requests -> this gives an idea of overall traffic and load. (implemented)
+- Response times -> Do we have spikes in response times, or periods of prolonged response times, could indicate performance issues.
+- Errors -> Measure errors on our end as well, could indicate or point toward bugs or potential attacks on the system. (implemented)
+- Database accesses -> How much do we access the database and can this be optimised? (implemented)
+- Memory/CPU Usage -> Overall good idea, but we also have the CPU graph in digital ocean providing similar information.
+- User oriented metrics -> Things such as 'new users', 'tweets/hour' etc. Will give us data that could be used to correlate with other areas including performance issues and maybe locating potential bottlenecks.
+
+Current issue is figuring out how to display the correct queries in grafana (Any referring to localhost in the following can be replaced by the production ip for live version). Going to localhost:4000/metrics shows our self-defined metrics as such:
+
+```
+...
+# HELP test1_prometheus_database_accesses_total Amount of database accesses or operations
+# TYPE test1_prometheus_database_accesses_total counter
+test1_prometheus_database_accesses_total 12
+# HELP test1_prometheus_http_requests_total Number of get requests.
+# TYPE test1_prometheus_http_requests_total counter
+test1_prometheus_http_requests_total 4
+...
+```
+
+Going to localhost:9090 opens prometheus interface, but neither ``test1_prometheus_http_requests_total`` nor ``sum(test1_prometheus_http_requests_total)``shows any results and this problem then forwards into grafana on localhost:3000 (they dont show up). The connection from prometheus to grafana should be working (server url is http://prometheus:9090) and it also states that it queries the prometheus api and we can display metrics that come with prometheus inherently, but not find our own.
