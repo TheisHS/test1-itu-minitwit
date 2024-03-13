@@ -183,7 +183,12 @@ workflows:
             - build_api
   test_release:
     jobs:
-      - publish_github_release
+      - build_web
+      - build_api
+      - publish_github_release:
+          requires:
+            - build_web
+            - build_api
   release:
     jobs:
       - publish_github_release
