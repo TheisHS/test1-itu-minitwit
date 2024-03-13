@@ -149,6 +149,7 @@ jobs:
   publish_github_release:
     docker:
       - image: cibuilds/github:0.10
+    resource_class: medium
     steps:
       - checkout
       - run:
