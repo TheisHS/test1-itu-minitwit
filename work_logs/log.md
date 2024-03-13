@@ -301,3 +301,8 @@ test1_http_requests_total 1
 ```
 
 and going to localhost:9090 and checking the status of current targets, it can clearly find our system and says that the connection is up, but I cannot query any of our own defined metrics, but works perfectly will the default ones. The issue does not seem to persist to Grafana, which should be set up as intended. Current problem is our prometheus cannot find our own metrics, but according to the material given and several online sources and videos, I cannot locate the error. 
+
+### Fix ?
+
+Following this Stack Overflow guide, we found that we could redirect the search to host.docker.internal, and then it found it. Maybe giving the docker container a `container_name` would also have done the job, but we cannot do this for two containers, so we will not do this for now.
+https://stackoverflow.com/questions/60679103/cannot-capture-client-metrics-with-prometheus
