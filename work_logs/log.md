@@ -255,3 +255,9 @@ We have set up Prometheus with Grafana.
 We chose these tools as they were directly supported and had substantial documentation online. In addition these were also the tools that were introduced to us in class, and we have not found any arguments for picking other tools.
 
 We have only set up three simple prometheus monitoring values, however our setup makes it easy to extend with further values after deliberating on what we will need to monitor and why.
+
+## March 13
+Nadja has set up the automatic releases using this guide:
+https://circleci.com/blog/publishing-to-github-releases-via-circleci/
+
+The Github access token has been setup by me. 
