@@ -285,6 +285,14 @@ Going to localhost:9090 opens prometheus interface, but neither ``test1_promethe
 
 ## March 13
 
+### Automatic Release
+
+Nadja has set up the automatic releases using this guide:
+https://circleci.com/blog/publishing-to-github-releases-via-circleci/
+
+The Github access token has been setup by me. The guide said something about a version ... I just set it to always be "automatic".
+
+### Prometheus and Grafana
 Continuing with Prometheus and Grafana. Removed the default go-metrics. Tested promauto.NewCounter vs prometheus.NewCounter. Removed the prometheus subspace from our metrics again, to make them more distinct. 
 
 /metrics now only shows our defined ones:
@@ -306,3 +314,4 @@ and going to localhost:9090 and checking the status of current targets, it can c
 
 Following this Stack Overflow guide, we found that we could redirect the search to host.docker.internal, and then it found it. Maybe giving the docker container a `container_name` would also have done the job, but we cannot do this for two containers, so we will not do this for now.
 https://stackoverflow.com/questions/60679103/cannot-capture-client-metrics-with-prometheus
+
