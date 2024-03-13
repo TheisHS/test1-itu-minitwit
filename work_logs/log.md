@@ -260,4 +260,4 @@ We have only set up three simple prometheus monitoring values, however our setup
 Nadja has set up the automatic releases using this guide:
 https://circleci.com/blog/publishing-to-github-releases-via-circleci/
 
-The Github access token has been setup by me. 
+The Github access token has been setup by me. The guide said something about a version ... I just set it to always be "automatic".
