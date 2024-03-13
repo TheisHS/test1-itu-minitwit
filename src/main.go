@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -24,7 +23,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -117,64 +115,29 @@ var (
 	perPage = 30
 )
 
-type responseWriter struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func NewResponseWriter(w http.ResponseWriter) *responseWriter {
-	return &responseWriter{w, http.StatusOK}
-}
-
-func (rw *responseWriter) WriteHeader(code int) {
-	rw.statusCode = code
-	rw.ResponseWriter.WriteHeader(code)
-}
-
-var totalRequests = prometheus.NewCounterVec(
+var totalRequests = prometheus.NewCounter(
 	prometheus.CounterOpts{
+		Namespace: "test1",
 		Name: "http_requests_total",
 		Help: "Number of get requests.",
 	},
-	[]string{"path"},
 )
 
-var responseStatus = prometheus.NewCounterVec(
+var databaseAccesses = prometheus.NewCounter(
 	prometheus.CounterOpts{
-		Name: "response_status",
-		Help: "Status of HTTP response",
+		Namespace: "test1",
+		Name: "database_accesses_total",
+		Help: "Amount of database accesses or operations",
 	},
-	[]string{"status"},
 )
 
-var httpDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
-	Name: "http_response_time_seconds",
-	Help: "Duration of HTTP requests.",
-}, []string{"path"})
-
-func prometheusMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		route := mux.CurrentRoute(r)
-		path, _ := route.GetPathTemplate()
-
-		timer := prometheus.NewTimer(httpDuration.WithLabelValues(path))
-		rw := NewResponseWriter(w)
-		next.ServeHTTP(rw, r)
-
-		statusCode := rw.statusCode
-
-		responseStatus.WithLabelValues(strconv.Itoa(statusCode)).Inc()
-		totalRequests.WithLabelValues(path).Inc()
-
-		timer.ObserveDuration()
-	})
-}
-
-func init() {
-	prometheus.Register(totalRequests)
-	prometheus.Register(responseStatus)
-	prometheus.Register(httpDuration)
-}
+var totalErrors = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Namespace: "test1",
+		Name: "errors_total",
+		Help: "Amount of errors",
+	},
+)
 
 func main() {
 	//os.Remove("./data/minitwit.db")
@@ -197,8 +160,12 @@ func main() {
     initDB();
 	}
 
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(totalRequests, databaseAccesses, totalErrors)
+	promHandler := promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
+
 	r := mux.NewRouter()
-	r.Path("/metrics").Handler(promhttp.Handler())
+	r.Path("/metrics").Handler(promHandler)
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	r.HandleFunc("/", timelineHandler).Methods("GET")
 	r.HandleFunc("/timeline", timelineHandler).Methods("GET")
@@ -211,7 +178,7 @@ func main() {
 	r.HandleFunc("/{username}/follow", followUserHandler).Methods("GET")
 	r.HandleFunc("/{username}/unfollow", unfollowUserHandler).Methods("GET")
 
-	r.Use(prometheusMiddleware)
+
 	fmt.Println("Server is running on port 5000")
 	r.Use(beforeRequest)
   http.ListenAndServe(":5000", r)
@@ -227,15 +194,15 @@ func connectDB() (*sql.DB, error) {
 
 func beforeRequest(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        // Logic to be executed before passing the request to the main handler
-        db, err = connectDB()
+		// Logic to be executed before passing the request to the main handler
+    db, err = connectDB()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		defer db.Close()
-        // Pass the request to the next handler in the chain
-        next.ServeHTTP(w, r)
+		// Pass the request to the next handler in the chain
+		next.ServeHTTP(w, r)
     }) 
 }
 
@@ -262,17 +229,21 @@ func initDB() {
 
 func getUserID(username string) (int, error) {
     var userID int
+		databaseAccesses.Inc()
     err = db.QueryRow("SELECT user_id FROM user WHERE username = ?", username).Scan(&userID)
     if err != nil {
-        return 0, err
+			totalErrors.Inc()
+			return 0, err
     }
     return userID, nil
 }
 
 func getUser(userID int) (*User) {
 	var user User
+	databaseAccesses.Inc()
 	err = db.QueryRow("SELECT user_id, username, email, pw_hash FROM user WHERE user_id = ?", userID).Scan(&user.UserID, &user.Username, &user.Email, &user.pwHash)
 	if err == sql.ErrNoRows {
+		totalErrors.Inc()
 		return nil
 	}
 	
@@ -289,11 +260,13 @@ func timelineHandler(w http.ResponseWriter, r *http.Request) {
 	user := getUser(userID)
 	var usermessages []UserMessage
 	
+	databaseAccesses.Inc()
 	rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND message.author_id = user.user_id AND (user.user_id = ? OR user.user_id in (SELECT whom_id FROM follower WHERE who_id = ?)) ORDER BY message.pub_date DESC LIMIT ?", userID, userID, perPage)
 	if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
+		totalErrors.Inc()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	defer rows.Close()
 
 	for rows.Next() {
@@ -301,6 +274,7 @@ func timelineHandler(w http.ResponseWriter, r *http.Request) {
 		var author User
 		err = rows.Scan(&message.messageID, &message.authorID, &message.Text, &message.PubDate, &message.flagged, &author.UserID, &author.Username, &author.Email, &author.pwHash)
 		if err != nil {
+			totalErrors.Inc()
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -330,8 +304,10 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var usermessages []UserMessage
 
-  	rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND message.author_id = user.user_id ORDER BY message.pub_date DESC LIMIT ?", perPage)
-  	if err != nil {
+	databaseAccesses.Inc()
+	rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND message.author_id = user.user_id ORDER BY message.pub_date DESC LIMIT ?", perPage)
+	if err != nil {
+		totalErrors.Inc()
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -342,6 +318,7 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 		var user User
 		err = rows.Scan(&message.messageID, &message.authorID, &message.Text, &message.PubDate, &message.flagged, &user.UserID, &user.Username, &user.Email, &user.pwHash)
 		if err != nil {
+			totalErrors.Inc()
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -367,9 +344,11 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	username := vars["username"]
 	var user User
 
+	databaseAccesses.Inc()
 	row := db.QueryRow("SELECT * FROM user WHERE username = ?", username)
 	err := row.Scan(&user.UserID, &user.Username, &user.Email, &user.pwHash)
 	if err != nil {
+		totalErrors.Inc()
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
@@ -380,6 +359,7 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	userID, ok := session.Values["user_id"].(int)
 
 	if ok {
+		databaseAccesses.Inc()
 		row := db.QueryRow("SELECT 1 FROM follower WHERE who_id = ? AND whom_id = ?", userID, user.UserID)
 		err := row.Scan(&followed)
 		if err == nil {
@@ -390,11 +370,13 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	var usermessages []UserMessage
 	var loggedInUser *User = getUser(userID)
 
+	databaseAccesses.Inc()
 	rows, err := db.Query("select message.*, user.* from message, user where user.user_id = message.author_id and user.user_id = ? order by message.pub_date desc limit ?", user.UserID, 30)
 	if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
+		totalErrors.Inc()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	defer rows.Close()
 
 	for rows.Next() {
@@ -402,6 +384,7 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 		var user User
 		err = rows.Scan(&message.messageID, &message.authorID, &message.Text, &message.PubDate, &message.flagged, &user.UserID, &user.Username, &user.Email, &user.pwHash)
 		if err != nil {
+			totalErrors.Inc()
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -426,27 +409,31 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 func followUserHandler(w http.ResponseWriter, r *http.Request) {
 	//Adds the current user as follower of the given user.
 	session, _ := store.Get(r, "session")
-    userID, ok := session.Values["user_id"].(int)
-    if !ok {
-        http.Error(w, "Unauthorized", http.StatusUnauthorized)
-        return
-    }
+	userID, ok := session.Values["user_id"].(int)
+	if !ok {
+		totalErrors.Inc()
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
-    vars := mux.Vars(r)
-    username := vars["username"]
+	vars := mux.Vars(r)
+	username := vars["username"]
 
-    whomID, err := getUserID(username)
-    if err != nil {
-        http.Error(w, "User not found", http.StatusNotFound)
-        return
-    }
+	whomID, err := getUserID(username)
+	if err != nil {
+		totalErrors.Inc()
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
 
+	databaseAccesses.Inc()
 	_, err = db.Exec("INSERT INTO follower (who_id, whom_id) VALUES (?, ?)", userID, whomID)
-    if err != nil {
+	if err != nil {
 		fmt.Println(err)
-        http.Error(w, "Database error", http.StatusInternalServerError)
-        return
-    }
+		totalErrors.Inc()
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
 	session.AddFlash("You are now following \"" + username + "\"")
 	session.Save(r, w)
 
@@ -456,27 +443,31 @@ func followUserHandler(w http.ResponseWriter, r *http.Request) {
 func unfollowUserHandler(w http.ResponseWriter, r *http.Request) {
     //Removes the current user as follower of the given user."
 	session, _ := store.Get(r, "session")
-    userID, ok := session.Values["user_id"].(int)
-    if !ok {
-        http.Error(w, "Unauthorized", http.StatusUnauthorized)
-        return
-    }
+	userID, ok := session.Values["user_id"].(int)
+	if !ok {
+		totalErrors.Inc()
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
-    vars := mux.Vars(r)
-    username := vars["username"]
+	vars := mux.Vars(r)
+	username := vars["username"]
 
-    whomID, err := getUserID(username)
-    if err != nil {
-        http.Error(w, "User not found", http.StatusNotFound)
-        return
-    }
+	whomID, err := getUserID(username)
+	if err != nil {
+		totalErrors.Inc()
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
 
+	databaseAccesses.Inc()
 	_, err = db.Exec("DELETE FROM follower WHERE who_id=? and whom_id=?", userID, whomID)
-    if err != nil {
+	if err != nil {
+		totalErrors.Inc()
 		fmt.Println(err)
-        http.Error(w, "Database error", http.StatusInternalServerError)
-        return
-    }
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
 
 	session.AddFlash("You are no longer following \"" + username + "\"")
 	session.Save(r, w)
@@ -490,24 +481,29 @@ func addMessageHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session")
 	userID, ok := session.Values["user_id"].(int)
 	if !ok {
+		totalErrors.Inc()
 		http.Error(w, "Not logged in", http.StatusUnauthorized)
 		return
 	}
 
 	err := r.ParseForm()
-    if err != nil {
-        http.Error(w, "Bad Request", http.StatusBadRequest)
-        return
-    }
-
-    text := r.Form.Get("text")
-    if text == "" {
-        http.Error(w, "Bad Request: Empty message", http.StatusBadRequest)
-        return
-    }
-
-	_, err = db.Exec("INSERT INTO message (author_id, text, pub_date, flagged) VALUES (?, ?, ?, 0)", userID, text, time.Now().Unix())
 	if err != nil {
+		totalErrors.Inc()
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	text := r.Form.Get("text")
+	if text == "" {
+			http.Error(w, "Bad Request: Empty message", http.StatusBadRequest)
+			return
+	}
+
+	databaseAccesses.Inc()
+	_, err = db.Exec("INSERT INTO message (author_id, text, pub_date, flagged) VALUES (?, ?, ?, 0)", userID, text, time.Now().Unix())
+	totalRequests.Inc()
+	if err != nil {
+		totalErrors.Inc()
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -543,6 +539,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 			registerError = "The username is already taken"
 		} else {
 			pwHash := GeneratePasswordHash(password)
+			databaseAccesses.Inc()
 			err = db.QueryRow("insert into user (username, email, pw_hash) values (?, ?, ?)", username, email, pwHash).Scan(&user.UserID, &user.Username, &user.pwHash)
 			session.AddFlash("You were successfully registered and can login now")
 			session.Save(r, w)
@@ -562,11 +559,12 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	session, err := store.Get(r, "session")
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-	
+	if err != nil {
+		totalErrors.Inc()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	if _, ok := session.Values["user_id"]; ok {
 		http.Redirect(w, r, "/timeline", http.StatusSeeOther)
 		return
@@ -579,6 +577,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		username := r.FormValue("username")
 		password := r.FormValue("password")
 
+		databaseAccesses.Inc()
 		err = db.QueryRow("SELECT user_id, username, pw_hash FROM user WHERE username = ?", username).Scan(&user.UserID, &user.Username, &user.pwHash)
 		if err == sql.ErrNoRows {
 			loginError = "Invalid username"
@@ -589,11 +588,12 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			session.AddFlash("You were logged in")
 			saveError := session.Save(r, w)
 			if saveError != nil {
+				totalErrors.Inc()
 				http.Error(w, saveError.Error(), http.StatusInternalServerError)
 				return
 			}
 			http.Redirect(w, r, "/timeline", http.StatusSeeOther)
-            return
+			return
 		}
 	}
 	
