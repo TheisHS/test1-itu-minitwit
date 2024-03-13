@@ -180,9 +180,6 @@ workflows:
           requires:
             - build_web
             - build_api
-  test_release:
-    jobs:
-      - publish_github_release
   release:
     jobs:
       - publish_github_release
