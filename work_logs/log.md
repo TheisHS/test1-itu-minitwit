@@ -282,3 +282,22 @@ test1_prometheus_http_requests_total 4
 ```
 
 Going to localhost:9090 opens prometheus interface, but neither ``test1_prometheus_http_requests_total`` nor ``sum(test1_prometheus_http_requests_total)``shows any results and this problem then forwards into grafana on localhost:3000 (they dont show up). The connection from prometheus to grafana should be working (server url is http://prometheus:9090) and it also states that it queries the prometheus api and we can display metrics that come with prometheus inherently, but not find our own.
+
+## March 13
+
+Continuing with Prometheus and Grafana. Removed the default go-metrics. Tested promauto.NewCounter vs prometheus.NewCounter. Removed the prometheus subspace from our metrics again, to make them more distinct. 
+
+/metrics now only shows our defined ones:
+```
+# HELP test1_database_accesses_total Amount of database accesses or operations
+# TYPE test1_database_accesses_total counter
+test1_database_accesses_total 5
+# HELP test1_errors_total Amount of errors
+# TYPE test1_errors_total counter
+test1_errors_total 0
+# HELP test1_http_requests_total Number of get requests.
+# TYPE test1_http_requests_total counter
+test1_http_requests_total 1
+```
+
+and going to localhost:9090 and checking the status of current targets, it can clearly find our system and says that the connection is up, but I cannot query any of our own defined metrics, but works perfectly will the default ones. The issue does not seem to persist to Grafana, which should be set up as intended. Current problem is our prometheus cannot find our own metrics, but according to the material given and several online sources and videos, I cannot locate the error. 
