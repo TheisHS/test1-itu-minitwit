@@ -23,7 +23,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -116,42 +115,25 @@ var (
 	perPage = 30
 )
 
-type responseWriter struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func NewResponseWriter(w http.ResponseWriter) *responseWriter {
-	return &responseWriter{w, http.StatusOK}
-}
-
-func (rw *responseWriter) WriteHeader(code int) {
-	rw.statusCode = code
-	rw.ResponseWriter.WriteHeader(code)
-}
-
-var totalRequests = promauto.NewCounter(
+var totalRequests = prometheus.NewCounter(
 	prometheus.CounterOpts{
 		Namespace: "test1",
-  	Subsystem: "prometheus",
 		Name: "http_requests_total",
 		Help: "Number of get requests.",
 	},
 )
 
-var databaseAccesses = promauto.NewCounter(
+var databaseAccesses = prometheus.NewCounter(
 	prometheus.CounterOpts{
 		Namespace: "test1",
-  	Subsystem: "prometheus",
 		Name: "database_accesses_total",
 		Help: "Amount of database accesses or operations",
 	},
 )
 
-var totalErrors = promauto.NewCounter(
+var totalErrors = prometheus.NewCounter(
 	prometheus.CounterOpts{
 		Namespace: "test1",
-  	Subsystem: "prometheus",
 		Name: "errors_total",
 		Help: "Amount of errors",
 	},
@@ -178,8 +160,12 @@ func main() {
     initDB();
 	}
 
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(totalRequests, databaseAccesses, totalErrors)
+	promHandler := promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
+
 	r := mux.NewRouter()
-	r.Path("/metrics").Handler(promhttp.Handler())
+	r.Path("/metrics").Handler(promHandler)
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	r.HandleFunc("/", timelineHandler).Methods("GET")
 	r.HandleFunc("/timeline", timelineHandler).Methods("GET")
@@ -192,9 +178,7 @@ func main() {
 	r.HandleFunc("/{username}/follow", followUserHandler).Methods("GET")
 	r.HandleFunc("/{username}/unfollow", unfollowUserHandler).Methods("GET")
 
-	prometheus.Register(totalRequests)
-	prometheus.Register(databaseAccesses)
-	prometheus.Register(totalErrors)
+
 	fmt.Println("Server is running on port 5000")
 	r.Use(beforeRequest)
   http.ListenAndServe(":5000", r)
