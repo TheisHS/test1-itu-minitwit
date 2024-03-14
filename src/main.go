@@ -207,7 +207,7 @@ func connectDB() (*sql.DB, error) {
 		return db, nil
 	}
 	if env == "prod" {
-		var connStr, ok = os.LookupEnv("DATABASE_URL")
+		connStr, ok := os.LookupEnv("DATABASE_URL")
 		if ok {
 			db, err := sql.Open("postgres", connStr)
 			if err != nil {
