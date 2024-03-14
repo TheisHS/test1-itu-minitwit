@@ -208,12 +208,15 @@ func connectDB() (*sql.DB, error) {
 		return db, nil
 	}
 	if env == "prod" {
-		var connStr = "postgres://postgres:mkw68nka@172.28.144.1/minitwit?sslmode=disable"
-		db, err := sql.Open("postgres", connStr)
-		if err != nil {
-				return nil, err
-		}
-		return db, nil
+		var connStr, ok = os.LookupEnv("DATABASE_URL")
+		if ok {
+			db, err := sql.Open("postgres", connStr)
+			if err != nil {
+					return nil, err
+			}
+			return db, nil
+		}	
+		panic("DATABASE_URL not set!")
 	}
 	panic("Unknown environment")
 }
