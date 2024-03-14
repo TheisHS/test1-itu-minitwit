@@ -2,11 +2,11 @@ package main
 
 import (
 	"database/sql"
+	"flag"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"flag"
 	"os"
 	"strconv"
 	"strings"
@@ -100,7 +100,7 @@ var (
 func main() {
 	flag.StringVar(&env, "env", "dev", "Environment to run the server in")
 	flag.Parse()
-	if env == "test" {
+	if env == "test" || env == "dev"{
 		_, err = os.Stat("./data/minitwit.db")
 		if err != nil {
 			initDB();
@@ -150,8 +150,7 @@ func connectDB() (*sql.DB, error) {
 		return db, nil
 	}
 	if env == "dev" {
-		var connStr = "postgres://user:password@pghost/dbname?sslmode=disable"
-		db, err := sql.Open("postgres", connStr)
+		db, err := sql.Open("sqlite3", "./data/minitwit.db")
 		if err != nil {
 				return nil, err
 		}
