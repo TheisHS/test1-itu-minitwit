@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"flag"
 	"fmt"
 	"html/template"
 	"log"
@@ -114,6 +115,7 @@ var (
 	err error
 	store = sessions.NewCookieStore([]byte("bb9cfb7ab2a6e36d683b0b209f96bb33"))
 	perPage = 30
+	env string
 )
 
 var totalRequests = prometheus.NewCounter(
@@ -156,10 +158,14 @@ func main() {
 	loginTmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/login.html"))
 	registerTmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/register.html"))
 
-	//_, err = os.Stat("./data/minitwit.db")
-	//if err != nil {
-  //  initDB();
-	//}
+	flag.StringVar(&env, "env", "dev", "Environment to run the server in")
+	flag.Parse()
+	if env == "test" {
+		_, err = os.Stat("./data/minitwit.db")
+		if err != nil {
+			initDB();
+		}
+	}
 
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(totalRequests, databaseAccesses, totalErrors)
@@ -186,13 +192,30 @@ func main() {
 }
 
 func connectDB() (*sql.DB, error) {
+	if env == "test" {
+		db, err := sql.Open("sqlite3", "./data/minitwit.db")
+		if err != nil {
+			return nil, err
+		}
+		return db, nil
+	}
+	if env == "dev" {
 		var connStr = "postgres://postgres:mkw68nka@172.28.144.1/minitwit?sslmode=disable"
 		db, err := sql.Open("postgres", connStr)
-    //db, err := sql.Open("sqlite3", "./data/minitwit.db")
-    if err != nil {
-        return nil, err
-    }
-    return db, nil
+		if err != nil {
+				return nil, err
+		}
+		return db, nil
+	}
+	if env == "prod" {
+		var connStr = "postgres://postgres:mkw68nka@172.28.144.1/minitwit?sslmode=disable"
+		db, err := sql.Open("postgres", connStr)
+		if err != nil {
+				return nil, err
+		}
+		return db, nil
+	}
+	panic("Unknown environment")
 }
 
 func beforeRequest(next http.Handler) http.Handler {

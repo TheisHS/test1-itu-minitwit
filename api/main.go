@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"flag"
 	"os"
 	"strconv"
 	"strings"
@@ -20,6 +21,7 @@ import (
 	"encoding/json"
 
 	"github.com/gorilla/mux"
+	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -92,13 +94,18 @@ type M map[string]interface{}
 var (
 	db *sql.DB
 	err error
+	env string
 )
 
 func main() {
-	//_, err = os.Stat("./data/minitwit.db")
-	//if err != nil {
-  //  initDB();
-	//}
+	flag.StringVar(&env, "env", "dev", "Environment to run the server in")
+	flag.Parse()
+	if env == "test" {
+		_, err = os.Stat("./data/minitwit.db")
+		if err != nil {
+			initDB();
+		}
+	}
 
 	r := mux.NewRouter()
 	r.HandleFunc("/latest", getLatestHandler).Methods("GET")
@@ -135,13 +142,30 @@ func initDB() {
 }
 
 func connectDB() (*sql.DB, error) {
-	var connStr = "postgres://postgres:mkw68nka@172.28.144.1/minitwit?sslmode=disable"
-	db, err := sql.Open("postgres", connStr)
-	//db, err := sql.Open("sqlite3", "./data/minitwit.db")
-	if err != nil {
+	if env == "test" {
+		db, err := sql.Open("sqlite3", "./data/minitwit.db")
+		if err != nil {
 			return nil, err
+		}
+		return db, nil
 	}
-	return db, nil
+	if env == "dev" {
+		var connStr = "postgres://postgres:mkw68nka@172.28.144.1/minitwit?sslmode=disable"
+		db, err := sql.Open("postgres", connStr)
+		if err != nil {
+				return nil, err
+		}
+		return db, nil
+	}
+	if env == "prod" {
+		var connStr = "postgres://postgres:mkw68nka@172.28.144.1/minitwit?sslmode=disable"
+		db, err := sql.Open("postgres", connStr)
+		if err != nil {
+				return nil, err
+		}
+		return db, nil
+	}
+	panic("Unknown environment")
 }
 
 func beforeRequest(next http.Handler) http.Handler {
