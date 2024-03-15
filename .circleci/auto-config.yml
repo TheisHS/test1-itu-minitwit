@@ -1,0 +1,27 @@
+# This config was automatically generated from your source code
+# Stacks detected: artifact:go-executable:,deps:go:src
+version: 2.1
+
+jobs:
+  publish_github_release:
+    docker:
+      - image: cibuilds/github:0.10
+    resource_class: medium
+    steps:
+      - checkout
+      - run:
+          name: "Publish Release on GitHub"
+          command: |
+            ghr -t ${GITHUB_TOKEN} -u ${REPO_USERNAME} -r ${REPO_NAME} -c ${CIRCLE_SHA1} -delete "automatic" ./LICENSE
+
+workflows:
+  release:
+    jobs:
+      - publish_github_release
+    triggers:
+      - schedule:
+          cron: "0 12 * * 5"
+          filters:
+            branches:
+              only:
+                - main
