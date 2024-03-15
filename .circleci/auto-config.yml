@@ -20,7 +20,7 @@ workflows:
       - publish_github_release
     triggers:
       - schedule:
-          cron: "0 12 * * 5"
+          cron: "15 12 * * 5"
           filters:
             branches:
               only:
