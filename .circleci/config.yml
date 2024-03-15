@@ -146,17 +146,6 @@ jobs:
           command: |
             ssh $SSH_USER@$SSH_HOST -i ~/.ssh/do_ssh_key -o StrictHostKeyChecking=no './deploy.sh'
 
-  publish_github_release:
-    docker:
-      - image: cibuilds/github:0.10
-    resource_class: medium
-    steps:
-      - checkout
-      - run:
-          name: "Publish Release on GitHub"
-          command: |
-            ghr -t ${GITHUB_TOKEN} -u ${REPO_USERNAME} -r ${REPO_NAME} -c ${CIRCLE_SHA1} -delete "automatic" ./LICENSE
-
 workflows:
   build_and_deploy:
     jobs:
@@ -180,13 +169,3 @@ workflows:
           requires:
             - build_web
             - build_api
-  release:
-    jobs:
-      - publish_github_release
-    triggers:
-      - schedule:
-          cron: "0 20 * * 4"
-          filters:
-            branches:
-              only:
-                - main
