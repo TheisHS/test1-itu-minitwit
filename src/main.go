@@ -158,7 +158,7 @@ var loginRequests = prometheus.NewCounter(
 var unsuccessfulLoginRequests = prometheus.NewCounter(
 	prometheus.CounterOpts{
 		Namespace: "test1",
-		Name: "login_requests",
+		Name: "login_requests_failed",
 		Help: "The amount of unsuccessful login requests on the web app",
 	},
 )
