@@ -21,6 +21,10 @@ import (
 
 	"github.com/gorilla/mux"
 	_ "github.com/mattn/go-sqlite3"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 const (
@@ -92,7 +96,39 @@ type M map[string]interface{}
 var (
 	db *sql.DB
 	err error
+	logger *zap.Logger
 )
+
+func init() {
+	stdout := zapcore.AddSync(os.Stdout)
+
+	file := zapcore.AddSync(&lumberjack.Logger{
+		Filename:   "logs/go.log",
+		MaxSize:    10, // megabytes
+		MaxBackups: 3,
+		MaxAge:     7, // days
+	})
+
+	level := zap.NewAtomicLevelAt(zap.InfoLevel)
+
+	productionCfg := zap.NewProductionEncoderConfig()
+	productionCfg.TimeKey = "timestamp"
+	productionCfg.EncodeTime = zapcore.ISO8601TimeEncoder
+
+	developmentCfg := zap.NewDevelopmentEncoderConfig()
+	developmentCfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
+
+	consoleEncoder := zapcore.NewConsoleEncoder(developmentCfg)
+	fileEncoder := zapcore.NewJSONEncoder(productionCfg)
+
+	core := zapcore.NewTee(
+		zapcore.NewCore(consoleEncoder, stdout, level),
+		zapcore.NewCore(fileEncoder, file, level),
+	)
+
+	logger = zap.New(core)
+	defer logger.Sync()
+}
 
 func main() {
 	_, err = os.Stat("./data/minitwit.db")
@@ -248,7 +284,8 @@ func msgsHandler(w http.ResponseWriter, r *http.Request) {
 			filteredMessage := M{"content": message.Text, "pub_date": message.PubDate, "user": author.Username}
 			filteredMessages = append(filteredMessages, filteredMessage)
 		}	
-
+		
+		logger.Info("Messages retrieved", zap.Any("messages", filteredMessages))
 		data, _ := json.Marshal(filteredMessages)
 		io.WriteString(w, string(data))
 	}
@@ -287,7 +324,7 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 			filteredMessage := M{"content": message.Text, "pub_date": message.PubDate, "user": author.Username}
 			filteredMessages = append(filteredMessages, filteredMessage)
 		}	
-
+		logger.Info("Retrieved messages for user", zap.String("username", username), zap.Any("messages", filteredMessages))
 		data, _ := json.Marshal(filteredMessages)
 		io.WriteString(w, string(data))
 	} else if r.Method == http.MethodPost {
@@ -301,6 +338,7 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Database error", http.StatusInternalServerError)
       return
 		}
+		logger.Info("Message added", zap.String("username", username), zap.String("content", data.Content))
 		w.WriteHeader(http.StatusNoContent)
 		io.WriteString(w, "")
 		return
@@ -340,6 +378,7 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 					http.Error(w, "Database error", http.StatusInternalServerError)
 					return
 			}
+			logger.Info("User followed", zap.String("username", username), zap.String("followed", data.Follow))
 			w.WriteHeader(http.StatusNoContent)
 			io.WriteString(w, "")
 			return
@@ -356,6 +395,7 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 					http.Error(w, "Database error", http.StatusInternalServerError)
 					return
 			}
+			logger.Info("User unfollowed", zap.String("username", username), zap.String("unfollowed", data.Unfollow))
 			w.WriteHeader(http.StatusNoContent)
 			io.WriteString(w, "")
 			return
@@ -380,6 +420,7 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			followers = append(followers, username)
 		}
+		logger.Info("Retrieved followers for user", zap.String("username", username), zap.Any("followers", followers))
 		followerJSON, _ := json.Marshal(followers)
 		io.WriteString(w, fmt.Sprintf("{\"follows\": %v}", string(followerJSON)))
 	}
@@ -415,6 +456,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			logger.Info("User registered", zap.String("username", data.Username))
 			w.WriteHeader(http.StatusNoContent)
 			io.WriteString(w, "")
 			return
