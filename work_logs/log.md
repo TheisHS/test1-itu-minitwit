@@ -313,5 +313,19 @@ and going to localhost:9090 and checking the status of current targets, it can c
 ### Fix ?
 
 Following this Stack Overflow guide, we found that we could redirect the search to host.docker.internal, and then it found it. Maybe giving the docker container a `container_name` would also have done the job, but we cannot do this for two containers, so we will not do this for now.
-https://stackoverflow.com/questions/60679103/cannot-capture-client-metrics-with-prometheus
+https://stackoverflow.com/questions/60679103/cannot-capture-client-metrics-with-prometheus. This fixed it locally, but the real fix for production was to insert the ip instead.
+
+## March 18
+
+Started work on ELK stack. Used this repo for inspiration to go implementation https://github.com/leozz37/golang-elk-example/tree/main. I have set up the configuration parts.
+
+## March 19
+
+Will be doing a customised implementation of the zap (go.uber.org/zap) library as the other example uses it with gin, whereas we are using gorilla.
+
+createLogger() -> https://betterstack.com/community/guides/logging/go/zap/#creating-a-custom-logger with lumberjack library to rotate log files and make sure they do not get massive.
+
+Start the program and go to 5601 to access kibana (it might take a little time). In here we should be able to set up logging dashboards.
+
+TODO: When DB is merged with the environments, set a dynamic variable on the "Development" field in the logger construction.
 
