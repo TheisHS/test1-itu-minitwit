@@ -52,6 +52,7 @@ services:
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.6.2
+    platform: linux/amd64
     volumes:
       - ./resources/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
     healthcheck:
@@ -64,6 +65,7 @@ services:
 
   logstash:
     image: docker.elastic.co/logstash/logstash:7.6.2
+    platform: linux/amd64
     volumes:
       - ./resources/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
     depends_on:
@@ -72,6 +74,7 @@ services:
 
   filebeat:
     image: docker.elastic.co/beats/filebeat:6.5.1
+    platform: linux/amd64
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -81,6 +84,7 @@ services:
 
   kibana:
     image: docker.elastic.co/kibana/kibana:7.6.2
+    platform: linux/amd64
     depends_on:
       elasticsearch:
         condition: service_healthy
