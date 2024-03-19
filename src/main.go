@@ -24,6 +24,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 const (
@@ -113,6 +117,7 @@ var (
 	err error
 	store = sessions.NewCookieStore([]byte("bb9cfb7ab2a6e36d683b0b209f96bb33"))
 	perPage = 30
+	logger *zap.Logger
 )
 
 var totalRequests = prometheus.NewCounter(
@@ -138,6 +143,37 @@ var totalErrors = prometheus.NewCounter(
 		Help: "Amount of errors",
 	},
 )
+
+func init() {
+	stdout := zapcore.AddSync(os.Stdout)
+
+	file := zapcore.AddSync(&lumberjack.Logger{
+		Filename:   "logs/go.log",
+		MaxSize:    10, // megabytes
+		MaxBackups: 3,
+		MaxAge:     7, // days
+	})
+
+	level := zap.NewAtomicLevelAt(zap.InfoLevel)
+
+	productionCfg := zap.NewProductionEncoderConfig()
+	productionCfg.TimeKey = "timestamp"
+	productionCfg.EncodeTime = zapcore.ISO8601TimeEncoder
+
+	developmentCfg := zap.NewDevelopmentEncoderConfig()
+	developmentCfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
+
+	consoleEncoder := zapcore.NewConsoleEncoder(developmentCfg)
+	fileEncoder := zapcore.NewJSONEncoder(productionCfg)
+
+	core := zapcore.NewTee(
+		zapcore.NewCore(consoleEncoder, stdout, level),
+		zapcore.NewCore(fileEncoder, file, level),
+	)
+
+	logger = zap.New(core)
+	defer logger.Sync()
+}
 
 func main() {
 	//os.Remove("./data/minitwit.db")
@@ -507,6 +543,7 @@ func addMessageHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	logger.Info("Message added", zap.String("text", text), zap.Int("author_id", userID))
 	session.AddFlash("Your message was recorded")
 	session.Save(r, w)
 
