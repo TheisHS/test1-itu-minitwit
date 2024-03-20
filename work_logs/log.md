@@ -343,4 +343,26 @@ Missing:
 
 6. Deploy!!
 
+### SQLite to Managed Database at Digital Ocean SOLUTION
+DOWNLOAD DB
+scp root@46.101.123.125:~/minitwit/minitwit.db C:\Users\stend\Downloads
+
+MANUALLY CHANGE string to TEXT with db browser
+db browser: change tables from string to TEXT
+
+START CONTAINER RUNNING PGLOADER WITH DB FILE MOUNTED
+docker run -it --rm --name pgloader -v C:\Users\stend\Downloads\minitwit.db:/data/minitwit.db dimitri/pgloader:latest
+
+USE CONTAINER TO TRANSFER DATA FROM MINITWIT.DB to A PostgreSQL local db called minitwit
+pgloader sqlite:///data/minitwit.db pgsql://postgres:{MY_PASSWORD}@172.28.144.1/minitwit
+
+USE PG_DUMP TO MAKE BACKUP FILE WE SEND TO SERVER (LIST OF SQL COMMANDS. --clean COMMANDS FOR DROPPING TABLES)
+pg_dump --clean -U postgres -f minitwit_backup minitwit
+
+SYNC WITH DIGITAL OCEAN
+psql -d {connection_string} -f C:/Users/stend/Desktop/minitwit_backup
+
+GitHub Accept PR
+https://github.com/TheisHS/test1-itu-minitwit/pull/37
+
 
