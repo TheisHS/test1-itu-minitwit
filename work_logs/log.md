@@ -315,3 +315,54 @@ and going to localhost:9090 and checking the status of current targets, it can c
 Following this Stack Overflow guide, we found that we could redirect the search to host.docker.internal, and then it found it. Maybe giving the docker container a `container_name` would also have done the job, but we cannot do this for two containers, so we will not do this for now.
 https://stackoverflow.com/questions/60679103/cannot-capture-client-metrics-with-prometheus
 
+## March 14
+
+### SQLite to PostgreSQL conversion
+
+We need to convert our SQLite database to a PostgreSQL database. We have chosen to use pgLoader for this task.
+The conversion is necessary because SQLite is not suitable for production environments, and we want to use a more robust database system for our application.
+
+As a first step we installed postgresql locally. We then created a new minitwit database with pgAdmin.
+pgLoader only works for Linux and MacOS, so we had to use a docker container to run it.
+Then we scp'ed a copy of our SQLite database to the container, and ran the conversion by connecting to our new local postgres database. We did have some issues with type casting, 
+but with some quick changes in data types as well as updates to schema.sql we could successfully convert.
+
+Obs. for all queries referencing user, we must include "" citation signs, as we can't use user as table name in postgres since it is a reserved keyword which resulted in the database
+conversion automatically naming the table "user" (with citation sign).
+
+Testing the application with Postgres database:
+Just adding the connectionString to main and running the application was fine. However, the API tests did not pass.
+The issue was that the current tests were run on the actual database instead of making a new "testing" database, as we had intended to do... ups.
+So to make the tests work, we added a go flag package in order to account for a specified environment, this flag is passed to main from the docker-compose file.
+If the environment is test or development, the application will run SQLite, otherwise it will connect to the postgres database.
+
+Missing:
+4. Setup maintained database on digitalOcean: Database Cluster
+
+5. Migrate local postgres database to DigitalOcean with pg dump
+
+6. Deploy!!
+
+### SQLite to Managed Database at Digital Ocean SOLUTION
+DOWNLOAD DB
+scp root@46.101.123.125:~/minitwit/minitwit.db C:\Users\stend\Downloads
+
+MANUALLY CHANGE string to TEXT with db browser
+db browser: change tables from string to TEXT
+
+START CONTAINER RUNNING PGLOADER WITH DB FILE MOUNTED
+docker run -it --rm --name pgloader -v C:\Users\stend\Downloads\minitwit.db:/data/minitwit.db dimitri/pgloader:latest
+
+USE CONTAINER TO TRANSFER DATA FROM MINITWIT.DB to A PostgreSQL local db called minitwit
+pgloader sqlite:///data/minitwit.db pgsql://postgres:{MY_PASSWORD}@172.28.144.1/minitwit
+
+USE PG_DUMP TO MAKE BACKUP FILE WE SEND TO SERVER (LIST OF SQL COMMANDS. --clean COMMANDS FOR DROPPING TABLES)
+pg_dump --clean -U postgres -f minitwit_backup minitwit
+
+SYNC WITH DIGITAL OCEAN
+psql -d {connection_string} -f C:/Users/stend/Desktop/minitwit_backup
+
+GitHub Accept PR
+https://github.com/TheisHS/test1-itu-minitwit/pull/37
+
+

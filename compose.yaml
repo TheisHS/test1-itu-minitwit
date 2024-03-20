@@ -17,7 +17,8 @@ services:
     depends_on:
       - prometheus
       - grafana
-  
+    command: ["app", "-env", "dev"]
+
   apiserver:
     build:
       context: .
@@ -29,6 +30,7 @@ services:
     depends_on:
       - prometheus
       - grafana
+    command: ["app", "-env", "dev"]
 
   prometheus:
     image: prom/prometheus
