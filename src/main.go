@@ -142,6 +142,38 @@ var totalErrors = prometheus.NewCounter(
 	},
 )
 
+var registerRequests = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Namespace: "test1",
+		Name: "register_requests",
+		Help: "The amount of successful register requests on the web app",
+	},
+)
+
+var loginRequests = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Namespace: "test1",
+		Name: "login_requests",
+		Help: "The amount of successful login requests on the web app",
+	},
+)
+
+var unsuccessfulLoginRequests = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Namespace: "test1",
+		Name: "login_requests_failed",
+		Help: "The amount of unsuccessful login requests on the web app",
+	},
+)
+
+var tweetRequests = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Namespace: "test1",
+		Name: "tweets_requests",
+		Help: "The amount of tweet requests on the web app",
+	},
+)
+
 func main() {
 	//os.Remove("./data/minitwit.db")
 
@@ -168,7 +200,7 @@ func main() {
 	}
 
 	reg := prometheus.NewRegistry()
-	reg.MustRegister(totalRequests, databaseAccesses, totalErrors)
+	reg.MustRegister(totalRequests, databaseAccesses, totalErrors, registerRequests, tweetRequests, loginRequests, unsuccessfulLoginRequests)
 	promHandler := promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
 
 	r := mux.NewRouter()
@@ -535,6 +567,7 @@ func addMessageHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	tweetRequests.Inc()
 	session.AddFlash("Your message was recorded")
 	session.Save(r, w)
 
@@ -566,6 +599,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		} else if userID != 0 {
 			registerError = "The username is already taken"
 		} else {
+			registerRequests.Inc()
 			pwHash := GeneratePasswordHash(password)
 			databaseAccesses.Inc()
 			err = db.QueryRow("insert into \"user\" (username, email, pw_hash) values ($1, $2, $3)", username, email, pwHash).Scan(&user.UserID, &user.Username, &user.pwHash)
@@ -608,8 +642,10 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		databaseAccesses.Inc()
 		err = db.QueryRow("SELECT user_id, username, pw_hash FROM \"user\" WHERE username = $1", username).Scan(&user.UserID, &user.Username, &user.pwHash)
 		if err == sql.ErrNoRows {
+			unsuccessfulLoginRequests.Inc()
 			loginError = "Invalid username"
 		} else if !CheckPasswordHash(password, user.pwHash) { 
+			unsuccessfulLoginRequests.Inc()
 			loginError = "Invalid password"
 		} else {
 			session.Values["user_id"] = user.UserID
@@ -620,6 +656,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, saveError.Error(), http.StatusInternalServerError)
 				return
 			}
+			loginRequests.Inc()
 			http.Redirect(w, r, "/timeline", http.StatusSeeOther)
 			return
 		}

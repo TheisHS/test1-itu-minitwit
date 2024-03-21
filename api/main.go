@@ -23,6 +23,9 @@ import (
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const (
@@ -97,6 +100,30 @@ var (
 	env string
 )
 
+var totalRequests = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Namespace: "api",
+		Name: "http_requests_total",
+		Help: "Number of get requests.",
+	},
+)
+
+var databaseAccesses = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Namespace: "api",
+		Name: "database_accesses_total",
+		Help: "Amount of database accesses or operations",
+	},
+)
+
+var totalErrors = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Namespace: "api",
+		Name: "errors_total",
+		Help: "Amount of errors",
+	},
+)
+
 func main() {
 	flag.StringVar(&env, "env", "dev", "Environment to run the server in")
 	flag.Parse()
@@ -107,7 +134,12 @@ func main() {
 		}
 	}
 
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(totalRequests, databaseAccesses, totalErrors)
+	promHandler := promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
+
 	r := mux.NewRouter()
+	r.Path("/metrics").Handler(promHandler)
 	r.HandleFunc("/latest", getLatestHandler).Methods("GET")
 	r.HandleFunc("/register", registerHandler).Methods("POST")
 	r.HandleFunc("/msgs", msgsHandler).Methods("GET")
@@ -185,12 +217,14 @@ func beforeRequest(next http.Handler) http.Handler {
 }
 
 func getUserID(username string) (int, error) {
-    var userID int
-    err = db.QueryRow("SELECT user_id FROM \"user\" WHERE username = $1", username).Scan(&userID)
-    if err != nil {
-        return 0, err
-    }
-    return userID, nil
+	var userID int
+	databaseAccesses.Inc()
+	err = db.QueryRow("SELECT user_id FROM \"user\" WHERE username = $1", username).Scan(&userID)
+	if err != nil {
+		totalErrors.Inc()
+		return 0, err
+	}
+	return userID, nil
 }
 
 func notReqFromSimulator(w http.ResponseWriter, r *http.Request) (bool) {
@@ -213,6 +247,7 @@ func updateLatest(w http.ResponseWriter, r *http.Request) {
 	if parsedCommandID != -1 {
 		file, err := os.Create("./latest_processed_sim_action_id.txt")
 		if err != nil {
+			totalErrors.Inc()
 			http.Error(w, "Failed to open file", http.StatusInternalServerError)
 			return
 		}
@@ -220,6 +255,7 @@ func updateLatest(w http.ResponseWriter, r *http.Request) {
 
 		_, err = fmt.Fprintf(file, "%d", parsedCommandID)
 		if err != nil {
+			totalErrors.Inc()
 			http.Error(w, "Failed to write to file", http.StatusInternalServerError)
 			return
 		}
@@ -234,6 +270,7 @@ func getLatestHandler(w http.ResponseWriter, r *http.Request) {
 
 	file, err := os.ReadFile("./latest_processed_sim_action_id.txt")
 	if err != nil {
+		totalErrors.Inc()
 		http.Error(w, "Failed to open file", http.StatusInternalServerError)
 		return
 	}
@@ -249,18 +286,23 @@ func getLatestHandler(w http.ResponseWriter, r *http.Request) {
 func msgsHandler(w http.ResponseWriter, r *http.Request) {
 	updateLatest(w, r)
 	reqErr := notReqFromSimulator(w, r)
-	if reqErr { return }
+	if reqErr { 
+		return 
+	}
 
 	noMsgs := r.URL.Query().Get("no")
 	if r.Method == http.MethodGet {
+		totalRequests.Inc()
 		if noMsgs == "" {
 			io.WriteString(w, "[]")
 			return
 		}
+		databaseAccesses.Inc()
 		rows, err := db.Query("SELECT message.*, \"user\".* FROM message, \"user\" WHERE message.flagged = 0 AND message.author_id = \"user\".user_id ORDER BY message.pub_date DESC LIMIT $1", noMsgs)
 		if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
+				totalErrors.Inc()
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
 			}
 		defer rows.Close()
 	
@@ -270,6 +312,7 @@ func msgsHandler(w http.ResponseWriter, r *http.Request) {
 			var author User
 			err = rows.Scan(&message.messageID, &message.authorID, &message.Text, &message.PubDate, &message.flagged, &author.UserID, &author.Username, &author.Email, &author.pwHash)
 			if err != nil {
+				totalErrors.Inc()
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -292,14 +335,18 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 	username := vars["username"]
 	userID, err := getUserID(username)
 	if err != nil {
+		totalErrors.Inc()
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 	if r.Method == http.MethodGet {
+		totalRequests.Inc()
+		databaseAccesses.Inc()
 		rows, err := db.Query("SELECT message.*, \"user\".* FROM message, \"user\" WHERE message.flagged = 0 AND \"user\".user_id = message.author_id AND \"user\".user_id = $1 ORDER BY message.pub_date DESC LIMIT $2", userID, noMsgs)
 		if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
+			totalErrors.Inc()
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		defer rows.Close()
 	
@@ -309,6 +356,7 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 			var author User
 			err = rows.Scan(&message.messageID, &message.authorID, &message.Text, &message.PubDate, &message.flagged, &author.UserID, &author.Username, &author.Email, &author.pwHash)
 			if err != nil {
+				totalErrors.Inc()
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -319,13 +367,16 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 		data, _ := json.Marshal(filteredMessages)
 		io.WriteString(w, string(data))
 	} else if r.Method == http.MethodPost {
+		totalRequests.Inc()
 		type RegisterData struct {
 			Content string
 		}
 		var data RegisterData
 		json.NewDecoder(r.Body).Decode(&data)
+		databaseAccesses.Inc()
 		_, err := db.Exec("INSERT INTO message (author_id, text, pub_date, flagged) VALUES ($1, $2, $3, 0)", userID, data.Content, time.Now().Unix())
 		if err != nil {
+			totalErrors.Inc()
 			http.Error(w, "Database error", http.StatusInternalServerError)
       return
 		}
@@ -344,8 +395,9 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 	username := vars["username"]
 	whoID, err := getUserID(username)
 	if err != nil {
-			http.Error(w, "User not found", http.StatusNotFound)
-			return
+		totalErrors.Inc()
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
 	}
 
 	type FollowsData struct {
@@ -354,19 +406,22 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	if r.Method == http.MethodPost {
+		totalRequests.Inc()
 		var data FollowsData
 		json.NewDecoder(r.Body).Decode(&data)
 		if data.Follow != "" {
 			whomID, err := getUserID(data.Follow)
 			if err != nil {
-				// TODO: This has to be another error, likely 500 ???
+				totalErrors.Inc()
 				http.Error(w, "User not found", http.StatusNotFound)
 				return
 			}
+			databaseAccesses.Inc()
 			_, err = db.Exec("INSERT INTO follower (who_id, whom_id) VALUES ($1, $2)", whoID, whomID)
 			if err != nil {
-					http.Error(w, "Database error", http.StatusInternalServerError)
-					return
+				totalErrors.Inc()
+				http.Error(w, "Database error", http.StatusInternalServerError)
+				return
 			}
 			w.WriteHeader(http.StatusNoContent)
 			io.WriteString(w, "")
@@ -375,14 +430,17 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 		if data.Unfollow != "" {
 			whomID, err := getUserID(data.Unfollow)
 			if err != nil {
-				// TODO: This has to be another error, likely 500 ???
+				totalErrors.Inc()
 				http.Error(w, "User not found", http.StatusNotFound)
 				return
 			}
+
+			databaseAccesses.Inc()
 			_, err = db.Exec("DELETE FROM follower WHERE who_id=$1 and WHOM_ID=$2", whoID, whomID)
 			if err != nil {
-					http.Error(w, "Database error", http.StatusInternalServerError)
-					return
+				totalErrors.Inc()
+				http.Error(w, "Database error", http.StatusInternalServerError)
+				return
 			}
 			w.WriteHeader(http.StatusNoContent)
 			io.WriteString(w, "")
@@ -391,9 +449,12 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodGet {
+		totalRequests.Inc()
 		noFollowers, _ := strconv.Atoi(r.URL.Query().Get("no"))
+		databaseAccesses.Inc()
 		rows, err := db.Query("SELECT \"user\".username FROM \"user\" INNER JOIN follower ON follower.whom_id=\"user\".user_id WHERE follower.who_id=$1 LIMIT $2", whoID, noFollowers)
 		if err != nil {
+			totalErrors.Inc()
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -403,6 +464,7 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 			var username string
 			err = rows.Scan(&username)
 			if err != nil {
+				totalErrors.Inc()
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -420,6 +482,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 
 	var registerError string
 	if r.Method == http.MethodPost {
+		totalRequests.Inc()
 		type RegisterData struct {
 			Username string
 			Email string
@@ -438,8 +501,10 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 			registerError = "The username is already taken"
 		} else {
 			pwHash := GeneratePasswordHash(data.Pwd)
+			databaseAccesses.Inc()
 			_, err := db.Exec("insert into \"user\" (username, email, pw_hash) values ($1, $2, $3)", data.Username, data.Email, pwHash)
 			if err != nil {
+				totalErrors.Inc()
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
