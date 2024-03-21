@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"flag"
 	"fmt"
 	"html/template"
 	"log"
@@ -20,6 +21,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
+	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -113,6 +115,7 @@ var (
 	err error
 	store = sessions.NewCookieStore([]byte("bb9cfb7ab2a6e36d683b0b209f96bb33"))
 	perPage = 30
+	env string
 )
 
 var totalRequests = prometheus.NewCounter(
@@ -187,9 +190,13 @@ func main() {
 	loginTmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/login.html"))
 	registerTmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/register.html"))
 
-	_, err = os.Stat("./data/minitwit.db")
-	if err != nil {
-    initDB();
+	flag.StringVar(&env, "env", "dev", "Environment to run the server in")
+	flag.Parse()
+	if env == "test" || env == "dev" {
+		_, err = os.Stat("./data/minitwit.db")
+		if err != nil {
+			initDB();
+		}
 	}
 
 	reg := prometheus.NewRegistry()
@@ -217,11 +224,32 @@ func main() {
 }
 
 func connectDB() (*sql.DB, error) {
-    db, err := sql.Open("sqlite3", "./data/minitwit.db")
-    if err != nil {
-        return nil, err
-    }
-    return db, nil
+	if env == "test" {
+		db, err := sql.Open("sqlite3", "./data/minitwit.db")
+		if err != nil {
+			return nil, err
+		}
+		return db, nil
+	}
+	if env == "dev" {
+		db, err := sql.Open("sqlite3", "./data/minitwit.db")
+		if err != nil {
+				return nil, err
+		}
+		return db, nil
+	}
+	if env == "prod" {
+		connStr, ok := os.LookupEnv("DATABASE_URL")
+		if ok {
+			db, err := sql.Open("postgres", connStr)
+			if err != nil {
+					return nil, err
+			}
+			return db, nil
+		}	
+		panic("DATABASE_URL not set!")
+	}
+	panic("Unknown environment")
 }
 
 func beforeRequest(next http.Handler) http.Handler {
@@ -262,7 +290,7 @@ func initDB() {
 func getUserID(username string) (int, error) {
     var userID int
 		databaseAccesses.Inc()
-    err = db.QueryRow("SELECT user_id FROM user WHERE username = ?", username).Scan(&userID)
+    err = db.QueryRow("SELECT user_id FROM \"user\" WHERE username = $1", username).Scan(&userID)
     if err != nil {
 			totalErrors.Inc()
 			return 0, err
@@ -273,7 +301,7 @@ func getUserID(username string) (int, error) {
 func getUser(userID int) (*User) {
 	var user User
 	databaseAccesses.Inc()
-	err = db.QueryRow("SELECT user_id, username, email, pw_hash FROM user WHERE user_id = ?", userID).Scan(&user.UserID, &user.Username, &user.Email, &user.pwHash)
+	err = db.QueryRow("SELECT user_id, username, email, pw_hash FROM \"user\" WHERE user_id = $1", userID).Scan(&user.UserID, &user.Username, &user.Email, &user.pwHash)
 	if err == sql.ErrNoRows {
 		totalErrors.Inc()
 		return nil
@@ -293,7 +321,7 @@ func timelineHandler(w http.ResponseWriter, r *http.Request) {
 	var usermessages []UserMessage
 	
 	databaseAccesses.Inc()
-	rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND message.author_id = user.user_id AND (user.user_id = ? OR user.user_id in (SELECT whom_id FROM follower WHERE who_id = ?)) ORDER BY message.pub_date DESC LIMIT ?", userID, userID, perPage)
+	rows, err := db.Query("SELECT message.*, \"user\".* FROM message, \"user\" WHERE message.flagged = 0 AND message.author_id = \"user\".user_id AND (\"user\".user_id = $1 OR \"user\".user_id in (SELECT whom_id FROM follower WHERE who_id = $2)) ORDER BY message.pub_date DESC LIMIT $3", userID, userID, perPage)
 	if err != nil {
 		totalErrors.Inc()
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -337,7 +365,7 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	var usermessages []UserMessage
 
 	databaseAccesses.Inc()
-	rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND message.author_id = user.user_id ORDER BY message.pub_date DESC LIMIT ?", perPage)
+	rows, err := db.Query("SELECT message.*, \"user\".* FROM message, \"user\" WHERE message.flagged = 0 AND message.author_id = \"user\".user_id ORDER BY message.pub_date DESC LIMIT $1", perPage)
 	if err != nil {
 		totalErrors.Inc()
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -377,7 +405,7 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	var user User
 
 	databaseAccesses.Inc()
-	row := db.QueryRow("SELECT * FROM user WHERE username = ?", username)
+	row := db.QueryRow("SELECT * FROM \"user\" WHERE username = $1", username)
 	err := row.Scan(&user.UserID, &user.Username, &user.Email, &user.pwHash)
 	if err != nil {
 		totalErrors.Inc()
@@ -392,7 +420,7 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 
 	if ok {
 		databaseAccesses.Inc()
-		row := db.QueryRow("SELECT 1 FROM follower WHERE who_id = ? AND whom_id = ?", userID, user.UserID)
+		row := db.QueryRow("SELECT 1 FROM follower WHERE who_id = $1 AND whom_id = $2", userID, user.UserID)
 		err := row.Scan(&followed)
 		if err == nil {
 			followed = true
@@ -403,7 +431,7 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	var loggedInUser *User = getUser(userID)
 
 	databaseAccesses.Inc()
-	rows, err := db.Query("select message.*, user.* from message, user where user.user_id = message.author_id and user.user_id = ? order by message.pub_date desc limit ?", user.UserID, 30)
+	rows, err := db.Query("select message.*, \"user\".* from message, \"user\" where \"user\".user_id = message.author_id and \"user\".user_id = $1 order by message.pub_date desc limit $2", user.UserID, 30)
 	if err != nil {
 		totalErrors.Inc()
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -459,7 +487,7 @@ func followUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	databaseAccesses.Inc()
-	_, err = db.Exec("INSERT INTO follower (who_id, whom_id) VALUES (?, ?)", userID, whomID)
+	_, err = db.Exec("INSERT INTO follower (who_id, whom_id) VALUES ($1, $2)", userID, whomID)
 	if err != nil {
 		fmt.Println(err)
 		totalErrors.Inc()
@@ -493,7 +521,7 @@ func unfollowUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	databaseAccesses.Inc()
-	_, err = db.Exec("DELETE FROM follower WHERE who_id=? and whom_id=?", userID, whomID)
+	_, err = db.Exec("DELETE FROM follower WHERE who_id=$1 and whom_id=$2", userID, whomID)
 	if err != nil {
 		totalErrors.Inc()
 		fmt.Println(err)
@@ -532,7 +560,7 @@ func addMessageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	databaseAccesses.Inc()
-	_, err = db.Exec("INSERT INTO message (author_id, text, pub_date, flagged) VALUES (?, ?, ?, 0)", userID, text, time.Now().Unix())
+	_, err = db.Exec("INSERT INTO message (author_id, text, pub_date, flagged) VALUES ($1, $2, $3, 0)", userID, text, time.Now().Unix())
 	totalRequests.Inc()
 	if err != nil {
 		totalErrors.Inc()
@@ -574,7 +602,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 			registerRequests.Inc()
 			pwHash := GeneratePasswordHash(password)
 			databaseAccesses.Inc()
-			err = db.QueryRow("insert into user (username, email, pw_hash) values (?, ?, ?)", username, email, pwHash).Scan(&user.UserID, &user.Username, &user.pwHash)
+			err = db.QueryRow("insert into \"user\" (username, email, pw_hash) values ($1, $2, $3)", username, email, pwHash).Scan(&user.UserID, &user.Username, &user.pwHash)
 			session.AddFlash("You were successfully registered and can login now")
 			session.Save(r, w)
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
@@ -612,7 +640,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		password := r.FormValue("password")
 
 		databaseAccesses.Inc()
-		err = db.QueryRow("SELECT user_id, username, pw_hash FROM user WHERE username = ?", username).Scan(&user.UserID, &user.Username, &user.pwHash)
+		err = db.QueryRow("SELECT user_id, username, pw_hash FROM \"user\" WHERE username = $1", username).Scan(&user.UserID, &user.Username, &user.pwHash)
 		if err == sql.ErrNoRows {
 			unsuccessfulLoginRequests.Inc()
 			loginError = "Invalid username"

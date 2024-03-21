@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -20,6 +21,7 @@ import (
 	"encoding/json"
 
 	"github.com/gorilla/mux"
+	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -95,6 +97,7 @@ type M map[string]interface{}
 var (
 	db *sql.DB
 	err error
+	env string
 )
 
 var totalRequests = prometheus.NewCounter(
@@ -122,9 +125,13 @@ var totalErrors = prometheus.NewCounter(
 )
 
 func main() {
-	_, err = os.Stat("./data/minitwit.db")
-	if err != nil {
-    initDB();
+	flag.StringVar(&env, "env", "dev", "Environment to run the server in")
+	flag.Parse()
+	if env == "test" || env == "dev"{
+		_, err = os.Stat("./data/minitwit.db")
+		if err != nil {
+			initDB();
+		}
 	}
 
 	reg := prometheus.NewRegistry()
@@ -167,11 +174,32 @@ func initDB() {
 }
 
 func connectDB() (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", "./data/minitwit.db")
-	if err != nil {
-		return nil, err
+	if env == "test" {
+		db, err := sql.Open("sqlite3", "./data/minitwit.db")
+		if err != nil {
+			return nil, err
+		}
+		return db, nil
 	}
-	return db, nil
+	if env == "dev" {
+		db, err := sql.Open("sqlite3", "./data/minitwit.db")
+		if err != nil {
+				return nil, err
+		}
+		return db, nil
+	}
+	if env == "prod" {
+		connStr, ok := os.LookupEnv("DATABASE_URL")
+		if ok {
+			db, err := sql.Open("postgres", connStr)
+			if err != nil {
+					return nil, err
+			}
+			return db, nil
+		}	
+		panic("DATABASE_URL not set!")
+	}
+	panic("Unknown environment")
 }
 
 func beforeRequest(next http.Handler) http.Handler {
@@ -191,7 +219,7 @@ func beforeRequest(next http.Handler) http.Handler {
 func getUserID(username string) (int, error) {
 	var userID int
 	databaseAccesses.Inc()
-	err = db.QueryRow("SELECT user_id FROM user WHERE username = ?", username).Scan(&userID)
+	err = db.QueryRow("SELECT user_id FROM \"user\" WHERE username = $1", username).Scan(&userID)
 	if err != nil {
 		totalErrors.Inc()
 		return 0, err
@@ -270,7 +298,7 @@ func msgsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		databaseAccesses.Inc()
-		rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND message.author_id = user.user_id ORDER BY message.pub_date DESC LIMIT ?", noMsgs)
+		rows, err := db.Query("SELECT message.*, \"user\".* FROM message, \"user\" WHERE message.flagged = 0 AND message.author_id = \"user\".user_id ORDER BY message.pub_date DESC LIMIT $1", noMsgs)
 		if err != nil {
 				totalErrors.Inc()
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -314,7 +342,7 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		totalRequests.Inc()
 		databaseAccesses.Inc()
-		rows, err := db.Query("SELECT message.*, user.* FROM message, user WHERE message.flagged = 0 AND user.user_id = message.author_id AND user.user_id = ? ORDER BY message.pub_date DESC LIMIT ?", userID, noMsgs)
+		rows, err := db.Query("SELECT message.*, \"user\".* FROM message, \"user\" WHERE message.flagged = 0 AND \"user\".user_id = message.author_id AND \"user\".user_id = $1 ORDER BY message.pub_date DESC LIMIT $2", userID, noMsgs)
 		if err != nil {
 			totalErrors.Inc()
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -346,7 +374,7 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 		var data RegisterData
 		json.NewDecoder(r.Body).Decode(&data)
 		databaseAccesses.Inc()
-		_, err := db.Exec("INSERT INTO message (author_id, text, pub_date, flagged) VALUES (?, ?, ?, 0)", userID, data.Content, time.Now().Unix())
+		_, err := db.Exec("INSERT INTO message (author_id, text, pub_date, flagged) VALUES ($1, $2, $3, 0)", userID, data.Content, time.Now().Unix())
 		if err != nil {
 			totalErrors.Inc()
 			http.Error(w, "Database error", http.StatusInternalServerError)
@@ -389,7 +417,7 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			databaseAccesses.Inc()
-			_, err = db.Exec("INSERT INTO follower (who_id, whom_id) VALUES (?, ?)", whoID, whomID)
+			_, err = db.Exec("INSERT INTO follower (who_id, whom_id) VALUES ($1, $2)", whoID, whomID)
 			if err != nil {
 				totalErrors.Inc()
 				http.Error(w, "Database error", http.StatusInternalServerError)
@@ -406,8 +434,9 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "User not found", http.StatusNotFound)
 				return
 			}
+
 			databaseAccesses.Inc()
-			_, err = db.Exec("DELETE FROM follower WHERE who_id=? and WHOM_ID=?", whoID, whomID)
+			_, err = db.Exec("DELETE FROM follower WHERE who_id=$1 and WHOM_ID=$2", whoID, whomID)
 			if err != nil {
 				totalErrors.Inc()
 				http.Error(w, "Database error", http.StatusInternalServerError)
@@ -423,7 +452,7 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 		totalRequests.Inc()
 		noFollowers, _ := strconv.Atoi(r.URL.Query().Get("no"))
 		databaseAccesses.Inc()
-		rows, err := db.Query("SELECT user.username FROM user INNER JOIN follower ON follower.whom_id=user.user_id WHERE follower.who_id=? LIMIT ?", whoID, noFollowers)
+		rows, err := db.Query("SELECT \"user\".username FROM \"user\" INNER JOIN follower ON follower.whom_id=\"user\".user_id WHERE follower.who_id=$1 LIMIT $2", whoID, noFollowers)
 		if err != nil {
 			totalErrors.Inc()
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -473,7 +502,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			pwHash := GeneratePasswordHash(data.Pwd)
 			databaseAccesses.Inc()
-			_, err := db.Exec("insert into user (username, email, pw_hash) values (?, ?, ?)", data.Username, data.Email, pwHash)
+			_, err := db.Exec("insert into \"user\" (username, email, pw_hash) values ($1, $2, $3)", data.Username, data.Email, pwHash)
 			if err != nil {
 				totalErrors.Inc()
 				http.Error(w, err.Error(), http.StatusInternalServerError)
