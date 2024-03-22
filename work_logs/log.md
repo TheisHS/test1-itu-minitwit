@@ -366,3 +366,24 @@ GitHub Accept PR
 https://github.com/TheisHS/test1-itu-minitwit/pull/37
 
 
+## March 22
+
+### Optimizing Query Performance
+
+Today we saw that the load time of the public timeline was quite gradually increasing as the number of database entries increased.
+This did of course make sense, however we had thought that limiting the rows fetched from the database would be THE fix. But from further investigation we noted that we of course would still have to order all entries based on the timestamp in order to get the latest posts for the timeline.
+We then looked into indexing the timestamp of the messages table along the message_id (which postgres automatically indexes). 
+To do this we connected to our managed database on Digital Ocean and ran the following command:
+``` CREATE INDEX idx_pub_date ON messages(pub_date); ```
+From Digital Ocean we can see the query statistics of the query that fetches the posts for the public timeline:
+![img.png](img.png)
+The above was the query statistics before indexing the pub_date column. After indexing the column, the query statistics looked like this:
+![img_1.png](img_1.png)
+This seems like a significant improvement. However, the new statistics are based on much fewer calls to the database, so we will have to monitor the performance over time to see if the indexing has the desired effect. But manually we could see that the load time of the public timeline was significantly reduced from 1.5-3 seconds to around 120-200 ms.
+As we were looking at the query statistics we also noted long query time on the queries for unfollowing users and retrieving user id by username.
+So we did a few more indices:
+![img_2.png](img_2.png)
+and the query performance especially deleting a follower is quite notable:
+![img_3.png](img_3.png)
+from a mean of 45 ms to 4 ms. We are a bit in doubt of how the indexing overhead affect the query performance. For instance, inserting to the follower table a new following pair is now a bit slower, but seems like a trade-off worth taking at the moment.
+We will have to monitor this over time.
