@@ -368,4 +368,4 @@ https://github.com/TheisHS/test1-itu-minitwit/pull/37
 
 ## March 28
 
-Updated circle ci pipeline to use hadolint for Dockerfile linting. 
+Updated circle ci pipeline to use hadolint for Dockerfile linting. Two ignore-rules have been added, these are common ignores in online examples. Current threshold is "info" level by default, this means that it will fail if we reach a severity equal to that or higher during linting.
