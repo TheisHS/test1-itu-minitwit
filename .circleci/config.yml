@@ -1,5 +1,7 @@
 # This config was automatically generated from your source code
 # Stacks detected: artifact:go-executable:,deps:go:src
+orbs:
+  docker: circleci/docker@x.y.z
 version: 2.1
 
 jobs:
@@ -147,6 +149,10 @@ jobs:
             ssh $SSH_USER@$SSH_HOST -i ~/.ssh/do_ssh_key -o StrictHostKeyChecking=no './deploy.sh'
 
 workflows:
+  lint:
+    jobs:
+      - docker/hadolint:
+        dockerfiles: 'api/Dockerfile:api-tests/Dockerfile:src/Dockerfile:src-tests/Dockerfile'
   build_and_deploy:
     jobs:
       - run_api_tests:
