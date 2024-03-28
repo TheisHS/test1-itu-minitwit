@@ -152,8 +152,8 @@ workflows:
   lint:
     jobs:
       - docker/hadolint:
-        ignore-rules: DL4005,DL3008
-        dockerfiles: 'api/Dockerfile:api-tests/Dockerfile:src/Dockerfile:src-tests/Dockerfile'
+          ignore-rules: DL4005,DL3008
+          dockerfiles: 'api/Dockerfile:api-tests/Dockerfile:src/Dockerfile:src-tests/Dockerfile'
   build_and_deploy:
     jobs:
       - run_api_tests:
