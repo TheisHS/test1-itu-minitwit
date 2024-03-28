@@ -1,7 +1,7 @@
 # This config was automatically generated from your source code
 # Stacks detected: artifact:go-executable:,deps:go:src
 orbs:
-  docker: circleci/docker@x.y.z
+  docker: circleci/docker@2.5.0
 version: 2.1
 
 jobs:
