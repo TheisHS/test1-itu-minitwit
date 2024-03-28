@@ -366,3 +366,6 @@ GitHub Accept PR
 https://github.com/TheisHS/test1-itu-minitwit/pull/37
 
 
+## March 28
+
+Updated circle ci pipeline to use hadolint for Dockerfile linting. 
