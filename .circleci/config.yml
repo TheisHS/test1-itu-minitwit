@@ -2,6 +2,7 @@
 # Stacks detected: artifact:go-executable:,deps:go:src
 orbs:
   docker: circleci/docker@2.5.0
+  shellcheck: circleci/shellcheck@3.1.2
 version: 2.1
 
 jobs:
@@ -154,6 +155,7 @@ workflows:
       - docker/hadolint:
           ignore-rules: DL4005,DL3008
           dockerfiles: 'api/Dockerfile:api-tests/Dockerfile:src/Dockerfile:src-tests/Dockerfile'
+      - shellcheck/check:
   build_and_deploy:
     jobs:
       - run_api_tests:
