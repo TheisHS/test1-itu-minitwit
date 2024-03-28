@@ -407,3 +407,4 @@ FodyWeavers.xsd
 src/schema.sql
 api/schema.sql
 */.pytest_cache
+data/

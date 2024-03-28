@@ -23,6 +23,7 @@ services:
     build:
       context: .
       dockerfile: ./api/Dockerfile
+    container_name: minitwitapi
     networks:
       - main
     ports:
@@ -48,6 +49,7 @@ services:
       - "3000:3000"
     networks:
       - main
+
 
 # We can look at https://github.com/docker/awesome-compose if we want to integrate other services at some point and manage their deployment
 # like MySQL, perhaps.

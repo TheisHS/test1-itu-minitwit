@@ -1,6 +1,6 @@
 {{ define "title" }}
   {{ if .ProfileUser }}
-    {{ .ProfileUser.Username }}'s Timeline
+    {{ .ProfileUser }}'s Timeline
   {{ else }} 
     {{ if .IsPublic }}
       Public Timeline
@@ -14,15 +14,15 @@
 {{ if .User }} 
   {{ if .ProfileUser }}
     <div class="followstatus">
-      {{ if eq .User.UserID .ProfileUser.UserID }} 
+      {{ if eq .User.Username .ProfileUser }} 
         This is you! 
       {{ else }} 
         {{ if .Followed }}
           You are currently following this user.
-          <a class="unfollow" href="/{{.ProfileUser.Username}}/unfollow">Unfollow user</a>. 
+          <a class="unfollow" href="/{{.ProfileUser}}/unfollow">Unfollow user</a>. 
         {{ else }} 
           You are not yet following this user.
-          <a class="follow" href="/{{.ProfileUser.Username}}/follow">Follow user</a>.
+          <a class="follow" href="/{{.ProfileUser}}/follow">Follow user</a>.
         {{ end }}
       {{ end }}
     </div>
@@ -39,13 +39,13 @@
   {{ end }}
 {{ end }}
 <ul class="messages">
-  {{ range .Usermessages }}
+  {{ range .Posts }}
   <li>
-    <img src="{{ .User.Gravatar 48 }}" />
+    <img src="{{ .Gravatar 48 }}" />
     <p>
-      <strong><a href="/{{.User.Username}}">{{ .User.Username }}</a></strong>
-      {{ .Message.Text }}
-      <small>&mdash; {{ .Message.FormatDatetime }}</small>
+      <strong><a href="/{{.User}}">{{ .User }}</a></strong>
+      {{ .Content }}
+      <small>&mdash; {{ .FormatDatetime }}</small>
     </p>
   </li>
   {{ else }}

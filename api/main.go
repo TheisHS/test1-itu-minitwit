@@ -26,6 +26,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/joho/godotenv"
 )
 
 const (
@@ -124,13 +126,20 @@ var totalErrors = prometheus.NewCounter(
 	},
 )
 
+var dbPath = "./data/minitwit.db"
+
 func main() {
 	flag.StringVar(&env, "env", "dev", "Environment to run the server in")
 	flag.Parse()
-	if env == "test" || env == "dev"{
-		_, err = os.Stat("./data/minitwit.db")
+	if env == "test" {
+		_, err = os.Stat(dbPath)
 		if err != nil {
 			initDB();
+		}
+	}
+	if env == "dev" {
+		if err := godotenv.Load(); err != nil {
+			log.Print("No .env file found")
 		}
 	}
 
@@ -145,18 +154,20 @@ func main() {
 	r.HandleFunc("/msgs", msgsHandler).Methods("GET")
 	r.HandleFunc("/msgs/{username}", messagesPerUserHandler).Methods("GET", "POST")
 	r.HandleFunc("/fllws/{username}", fllwsUserHandler).Methods("GET", "POST")
+	r.HandleFunc("/fllws/{whoUsername}/{whomUsername}", doesFllwUserHandler).Methods("GET")
+	r.HandleFunc("/userID/{username}", getUserIDHandler).Methods("GET")
+	r.HandleFunc("/user/{userID}", getUserHandler).Methods("GET")
 
 	fmt.Println("Server is running on port 5001")
 	r.Use(beforeRequest)
   http.ListenAndServe(":5001", r)
 }
 
-
 func initDB() {
 	log.Println("Initialising the database...")
 
-	os.Create("./data/minitwit.db")
-	db, err := sql.Open("sqlite3", "./data/minitwit.db")
+	os.Create(dbPath)
+	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		log.Println(err)
 	}
@@ -175,18 +186,22 @@ func initDB() {
 
 func connectDB() (*sql.DB, error) {
 	if env == "test" {
-		db, err := sql.Open("sqlite3", "./data/minitwit.db")
+		db, err := sql.Open("sqlite3", dbPath)
 		if err != nil {
 			return nil, err
 		}
 		return db, nil
 	}
 	if env == "dev" {
-		db, err := sql.Open("sqlite3", "./data/minitwit.db")
-		if err != nil {
-				return nil, err
-		}
-		return db, nil
+		connStr, ok := os.LookupEnv("DATABASE_URL")
+		if ok {
+			db, err := sql.Open("postgres", connStr)
+			if err != nil {
+					return nil, err
+			}
+			return db, nil
+		}	
+		panic("DATABASE_URL not set!")
 	}
 	if env == "prod" {
 		connStr, ok := os.LookupEnv("DATABASE_URL")
@@ -225,6 +240,42 @@ func getUserID(username string) (int, error) {
 		return 0, err
 	}
 	return userID, nil
+}
+
+func getUserIDHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	username := vars["username"]
+	userID, err := getUserID(username)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	io.WriteString(w, string(userID))
+}
+
+
+func getUser(userID int) (*User) {
+	var user User
+	databaseAccesses.Inc()
+	err = db.QueryRow("SELECT user_id, username, email FROM \"user\" WHERE user_id = $1", userID).Scan(&user.UserID, &user.Username, &user.Email)
+	if err == sql.ErrNoRows {
+		totalErrors.Inc()
+		return nil
+	}
+	return &user
+}
+
+func getUserHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := vars["userID"]
+	var user *User
+	id, err := strconv.Atoi(userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+	}
+	user = getUser(id)
+	data, _ := json.Marshal(*user)
+	io.WriteString(w, string(data))
 }
 
 func notReqFromSimulator(w http.ResponseWriter, r *http.Request) (bool) {
@@ -298,21 +349,26 @@ func msgsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		databaseAccesses.Inc()
-		rows, err := db.Query("SELECT message.*, \"user\".* FROM message, \"user\" WHERE message.flagged = 0 AND message.author_id = \"user\".user_id ORDER BY message.pub_date DESC LIMIT $1", noMsgs)
+		fmt.Println("Starting query")
+		rows, err := db.Query("SELECT message.text, message.pub_date, \"user\".username FROM message, \"user\" WHERE message.flagged = 0 AND message.author_id = \"user\".user_id ORDER BY message.pub_date DESC LIMIT $1", noMsgs)
 		if err != nil {
 				totalErrors.Inc()
+				fmt.Println("error when db.Query in msgsHandler")
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 		defer rows.Close()
 	
 		var filteredMessages []M
+		fmt.Println("Starting loop")
 		for rows.Next() {
+			fmt.Println("loop iteration")
 			var message Message
 			var author User
-			err = rows.Scan(&message.messageID, &message.authorID, &message.Text, &message.PubDate, &message.flagged, &author.UserID, &author.Username, &author.Email, &author.pwHash)
+			err = rows.Scan(&message.Text, &message.PubDate, &author.Username)
 			if err != nil {
 				totalErrors.Inc()
+				fmt.Println("error when rows.Scan() in msgsHandler")
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -320,31 +376,46 @@ func msgsHandler(w http.ResponseWriter, r *http.Request) {
 			filteredMessages = append(filteredMessages, filteredMessage)
 		}	
 
+		fmt.Println("json stringifying data")
+
 		data, _ := json.Marshal(filteredMessages)
+		fmt.Println("stringifyed: " + string(data))
 		io.WriteString(w, string(data))
 	}
 }
 
 func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 	updateLatest(w, r)
-	reqErr := notReqFromSimulator(w, r)
-	if reqErr { return }
+	// reqErr := notReqFromSimulator(w, r)
+	// if reqErr { return }
+
+	fmt.Println("Request to msgs pr user")
 	
 	noMsgs := r.URL.Query().Get("no")
 	vars := mux.Vars(r)
 	username := vars["username"]
 	userID, err := getUserID(username)
+	
 	if err != nil {
 		totalErrors.Inc()
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
+
+	fmt.Println(username, userID)
+
 	if r.Method == http.MethodGet {
 		totalRequests.Inc()
 		databaseAccesses.Inc()
+
+		fmt.Println("Querying")
+
+
 		rows, err := db.Query("SELECT message.*, \"user\".* FROM message, \"user\" WHERE message.flagged = 0 AND \"user\".user_id = message.author_id AND \"user\".user_id = $1 ORDER BY message.pub_date DESC LIMIT $2", userID, noMsgs)
 		if err != nil {
 			totalErrors.Inc()
+			fmt.Println("Error in Query")
+
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -352,19 +423,25 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 	
 		var filteredMessages []M
 		for rows.Next() {
+			fmt.Println("Row iteration")
+
 			var message Message
 			var author User
 			err = rows.Scan(&message.messageID, &message.authorID, &message.Text, &message.PubDate, &message.flagged, &author.UserID, &author.Username, &author.Email, &author.pwHash)
 			if err != nil {
+				fmt.Println("Error in scan")
+
 				totalErrors.Inc()
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			filteredMessage := M{"content": message.Text, "pub_date": message.PubDate, "user": author.Username}
+			fmt.Printf("content: %s, pubdate: %d, user: %s\n", message.Text, message.PubDate, author.Username)
 			filteredMessages = append(filteredMessages, filteredMessage)
 		}	
 
 		data, _ := json.Marshal(filteredMessages)
+		fmt.Println(string(data))
 		io.WriteString(w, string(data))
 	} else if r.Method == http.MethodPost {
 		totalRequests.Inc()
@@ -472,6 +549,40 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		followerJSON, _ := json.Marshal(followers)
 		io.WriteString(w, fmt.Sprintf("{\"follows\": %v}", string(followerJSON)))
+	}
+}
+
+func doesFllwUserHandler(w http.ResponseWriter, r *http.Request) {
+	updateLatest(w, r)
+	reqErr := notReqFromSimulator(w, r)
+	if reqErr { return }
+	
+	vars := mux.Vars(r)
+	whoUsername := vars["whoUsername"]
+	whomUsername := vars["whomUsername"]
+	whoID, err := getUserID(whoUsername)
+	if err != nil {
+		totalErrors.Inc()
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+	whomID, err := getUserID(whomUsername)
+	if err != nil {
+		totalErrors.Inc()
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+	
+	if r.Method == http.MethodGet {
+		totalRequests.Inc()
+		databaseAccesses.Inc()
+		var x int
+		err := db.QueryRow("SELECT * FROM follower WHERE follower.who_id=$1 follower.whom_id=$2", whoID, whomID).Scan(&x)
+		if err == sql.ErrNoRows {
+			io.WriteString(w, "false")
+			return
+		}
+		io.WriteString(w, "true")
 	}
 }
 

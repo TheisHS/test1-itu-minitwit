@@ -5,9 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,6 +20,7 @@ import (
 
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -26,6 +29,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/joho/godotenv"
 )
 
 const (
@@ -92,11 +97,18 @@ type Follower struct {
 	whomID int
 }
 
+type Post struct {
+	Content string
+	PubDate int
+	Username string
+}
+
 type TimelinePageData struct {
 	User *User
-	ProfileUser *User
+	ProfileUser string
 	IsPublic bool
 	Followed bool
+	Posts []Post
 	Usermessages []UserMessage
 	Flashes []interface{}
 }
@@ -174,8 +186,12 @@ var tweetRequests = prometheus.NewCounter(
 	},
 )
 
+var serverEndpoint = "http://minitwitapi:5001"
+
+var dbPath = "./data/minitwit.db"
+
 func main() {
-	//os.Remove("./data/minitwit.db")
+	//os.Remove(dbPath)
 
 	store.Options = &sessions.Options{
 		// Domain:   "localhost",
@@ -192,10 +208,15 @@ func main() {
 
 	flag.StringVar(&env, "env", "dev", "Environment to run the server in")
 	flag.Parse()
-	if env == "test" || env == "dev" {
-		_, err = os.Stat("./data/minitwit.db")
+	if env == "test" {
+		_, err = os.Stat(dbPath)
 		if err != nil {
 			initDB();
+		}
+	}
+	if env == "dev" {
+		if err := godotenv.Load(); err != nil {
+			log.Print("No .env file found")
 		}
 	}
 
@@ -225,18 +246,22 @@ func main() {
 
 func connectDB() (*sql.DB, error) {
 	if env == "test" {
-		db, err := sql.Open("sqlite3", "./data/minitwit.db")
+		db, err := sql.Open("sqlite3", dbPath)
 		if err != nil {
 			return nil, err
 		}
 		return db, nil
 	}
 	if env == "dev" {
-		db, err := sql.Open("sqlite3", "./data/minitwit.db")
-		if err != nil {
-				return nil, err
-		}
-		return db, nil
+		connStr, ok := os.LookupEnv("DATABASE_URL")
+		if ok {
+			db, err := sql.Open("postgres", connStr)
+			if err != nil {
+					return nil, err
+			}
+			return db, nil
+		}	
+		panic("DATABASE_URL not set!")
 	}
 	if env == "prod" {
 		connStr, ok := os.LookupEnv("DATABASE_URL")
@@ -269,8 +294,8 @@ func beforeRequest(next http.Handler) http.Handler {
 func initDB() {
 	log.Println("Initialising the database...")
 
-	os.Create("./data/minitwit.db")
-	db, err := sql.Open("sqlite3", "./data/minitwit.db")
+	os.Create(dbPath)
+	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		log.Println(err)
 	}
@@ -288,26 +313,35 @@ func initDB() {
 }
 
 func getUserID(username string) (int, error) {
-    var userID int
-		databaseAccesses.Inc()
-    err = db.QueryRow("SELECT user_id FROM \"user\" WHERE username = $1", username).Scan(&userID)
-    if err != nil {
-			totalErrors.Inc()
-			return 0, err
-    }
-    return userID, nil
+	requestURL := fmt.Sprintf("%s/userID/%s", serverEndpoint, username)
+	res, err := http.Get(requestURL)
+	if err != nil {
+		fmt.Printf("error making http request to %s: %s\n", requestURL, err)
+		return 0, err
+	}
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		fmt.Printf("could not read response body: %s\n", err)
+		return 0, err
+	}
+	userID, err := strconv.Atoi(string(resBody))
+	if err != nil {
+		fmt.Printf("could not convert %s to int: %s\n", string(resBody), err)
+		return 0, err
+	}
+	return userID, nil
 }
 
-func getUser(userID int) (*User) {
-	var user User
-	databaseAccesses.Inc()
-	err = db.QueryRow("SELECT user_id, username, email, pw_hash FROM \"user\" WHERE user_id = $1", userID).Scan(&user.UserID, &user.Username, &user.Email, &user.pwHash)
-	if err == sql.ErrNoRows {
-		totalErrors.Inc()
-		return nil
+func getUser(userID int) (*User, error) {
+	requestURL := fmt.Sprintf("%s/user/%d", serverEndpoint, userID)
+	res, err := http.Get(requestURL)
+	if err != nil {
+		fmt.Printf("error making http request to %s: %s\n", requestURL, err)
+		return nil, err
 	}
-	
-	return &user
+	var user User
+	json.NewDecoder(res.Body).Decode(&user)
+	return &user, nil
 }
 
 func timelineHandler(w http.ResponseWriter, r *http.Request) {
@@ -317,7 +351,7 @@ func timelineHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/public_timeline", http.StatusFound)
 		return
 	}
-	user := getUser(userID)
+	user, _ := getUser(userID)
 	var usermessages []UserMessage
 	
 	databaseAccesses.Inc()
@@ -360,36 +394,21 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session")
 	userID, ok := session.Values["user_id"].(int) 
 	if ok {
-		user = getUser(userID)
+		user, _ = getUser(userID)
 	}
-	var usermessages []UserMessage
 
-	databaseAccesses.Inc()
-	rows, err := db.Query("SELECT message.*, \"user\".* FROM message, \"user\" WHERE message.flagged = 0 AND message.author_id = \"user\".user_id ORDER BY message.pub_date DESC LIMIT $1", perPage)
+	requestURLb := fmt.Sprintf("%s/msgs?no=30", serverEndpoint)
+	res, err := http.Get(requestURLb)
 	if err != nil {
-		totalErrors.Inc()
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		fmt.Printf("error making http request to %s: %s\n", requestURLb, err)
 	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var message Message
-		var user User
-		err = rows.Scan(&message.messageID, &message.authorID, &message.Text, &message.PubDate, &message.flagged, &user.UserID, &user.Username, &user.Email, &user.pwHash)
-		if err != nil {
-			totalErrors.Inc()
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		um := UserMessage { User: user, Message: message }
-		usermessages = append(usermessages, um)
-	}
+	var posts []Post
+	json.NewDecoder(res.Body).Decode(&posts)
 
 	// for rendering the HTML template
 	data := TimelinePageData{
 		User: user,
-		Usermessages: usermessages,
+		Posts: posts,
 		IsPublic: true,
 		Flashes: session.Flashes(),
 	}
@@ -401,63 +420,38 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 
 func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
   vars := mux.Vars(r)
-	username := vars["username"]
-	var user User
-
-	databaseAccesses.Inc()
-	row := db.QueryRow("SELECT * FROM \"user\" WHERE username = $1", username)
-	err := row.Scan(&user.UserID, &user.Username, &user.Email, &user.pwHash)
-	if err != nil {
-		totalErrors.Inc()
-		http.Error(w, "User not found", http.StatusNotFound)
-		return
-	}
-	
-	followed := false
+	profileUser := vars["username"]
 
 	session, _ := store.Get(r, "session")
-	userID, ok := session.Values["user_id"].(int)
+	userID, _ := session.Values["user_id"].(int)
 
-	if ok {
-		databaseAccesses.Inc()
-		row := db.QueryRow("SELECT 1 FROM follower WHERE who_id = $1 AND whom_id = $2", userID, user.UserID)
-		err := row.Scan(&followed)
-		if err == nil {
-			followed = true
-		} 
-	}
+	var loggedInUser *User
+	loggedInUser, _ = getUser(userID)
 
-	var usermessages []UserMessage
-	var loggedInUser *User = getUser(userID)
 
-	databaseAccesses.Inc()
-	rows, err := db.Query("select message.*, \"user\".* from message, \"user\" where \"user\".user_id = message.author_id and \"user\".user_id = $1 order by message.pub_date desc limit $2", user.UserID, 30)
+	requestURLa := fmt.Sprintf("%s/fllws/%s/%s", serverEndpoint, loggedInUser.Username, profileUser)
+	fllwsRes, err := http.Get(requestURLa)
 	if err != nil {
-		totalErrors.Inc()
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		fmt.Printf("error making http request to %s: %s\n", requestURLa, err)
 	}
-	defer rows.Close()
+	var followed bool
+	json.NewDecoder(fllwsRes.Body).Decode(&followed)
 
-	for rows.Next() {
-		var message Message
-		var user User
-		err = rows.Scan(&message.messageID, &message.authorID, &message.Text, &message.PubDate, &message.flagged, &user.UserID, &user.Username, &user.Email, &user.pwHash)
-		if err != nil {
-			totalErrors.Inc()
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		um := UserMessage { User: user, Message: message }
-		usermessages = append(usermessages, um)
+	requestURLb := fmt.Sprintf("%s/msgs/%s?no=30", serverEndpoint, profileUser)
+	res, err := http.Get(requestURLb)
+	if err != nil {
+		fmt.Printf("error making http request to %s: %s\n", requestURLb, err)
 	}
+	var posts []Post
+	json.NewDecoder(res.Body).Decode(&posts)
+	
 
 	// for rendering the HTML template
 	data := TimelinePageData{
 		User: loggedInUser,
-		ProfileUser: &user,
+		ProfileUser: profileUser,
 		Followed: followed,
-		Usermessages: usermessages,
+		Posts: posts,
 		Flashes: session.Flashes(),
 	}
 
@@ -686,12 +680,12 @@ func GetMD5Hash(text string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-func (u User) Gravatar(size int) (string) {
-	// Return the gravatar image for the user's email address.
-	return fmt.Sprintf("http://www.gravatar.com/avatar/%v?d=identicon&s=%v", GetMD5Hash(u.Email), size)
+func (u Post) Gravatar(size int) (string) {
+	// Return the gravatar image for the user's username.
+	return fmt.Sprintf("http://www.gravatar.com/avatar/%v?d=identicon&s=%v", GetMD5Hash(u.Username), size)
 }
 
-func (m Message) FormatDatetime() (string) {
+func (m Post) FormatDatetime() (string) {
 	// Format a timestamp for display.
 	t := time.Unix(int64(m.PubDate), 0)
 	return t.Local().Format(time.ANSIC)

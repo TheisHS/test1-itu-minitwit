@@ -366,3 +366,13 @@ GitHub Accept PR
 https://github.com/TheisHS/test1-itu-minitwit/pull/37
 
 
+## March 28
+Setup client-server relationship between our webserver and apiserver. To run the program, it's required that the developer has a minitwit database setup on their computer, and created an `.env` file at the root of the directory with a connection string. The contents of the file will look something like the below, where `<USERNAME>` and `<PASSWORD>` are the local settings for psql on the computer, and `<DBNAME>` is the database name ("Minitwit" on my computer).
+
+`
+DATABASE_URL = "postgresql://<USERNAME>:<PASSWORD>@host.docker.internal:5432/<DBNAME>?sslmode=disable"
+`
+
+To setup a database with postgres, you can use PGAdmin. Remember to initialise the database by running the sql commands from the `schema.sql` file. 
+
+> NOTE: Instead of the `xx_id integer primary key autoincrement`, you will have to write `xx_id serial primary key`, as autoincrement does not exist in psql.
