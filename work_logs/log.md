@@ -366,3 +366,12 @@ GitHub Accept PR
 https://github.com/TheisHS/test1-itu-minitwit/pull/37
 
 
+## March 28
+
+Updated circle ci pipeline to use hadolint for Dockerfile linting. Two ignore-rules have been added, these are common ignores in online examples. Current threshold is "info" level by default, this means that it will fail if we reach a severity equal to that or higher during linting.
+
+### Dockerfile errors
+**api-tests and src-tests:**
+- add version to packages
+- add --no-cache-dir -> Once a package is installed, it does not need to be re-installed and the Docker cache can be leveraged instead. Since the pip cache makes the images larger and is not needed, it's better to disable it.
+- Consolidate run commands -> https://github.com/hadolint/hadolint/wiki/DL3059
