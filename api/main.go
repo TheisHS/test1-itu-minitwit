@@ -769,17 +769,16 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
       if data.PwdHash == "" {
         io.WriteString(w, fmt.Sprintf(`{"salt": "%s"}`, ps[1]))
         return
-      } else {
-        if ps[2] != data.PwdHash { 
-          devLog(fmt.Sprintf(`Password hashes do not match: %s != %s`, ps[2], data.PwdHash))
-          unsuccessfulLoginRequests.Inc()
-          loginError = "Invalid password"
-        } else {
-          loginRequests.Inc()
-          io.WriteString(w, fmt.Sprintf(`{"userID": %d}`, user.UserID))
-          return
-        }
+      } 
+      if ps[2] == data.PwdHash { 
+        loginRequests.Inc()
+        io.WriteString(w, fmt.Sprintf(`{"userID": %d}`, user.UserID))
+        return
       }
+      devLog(fmt.Sprintf(`Password hashes do not match: %s != %s`, ps[2], data.PwdHash))
+      unsuccessfulLoginRequests.Inc()
+      loginError = "Invalid password"
+      
     }
     devLog("Login failed")
     w.WriteHeader(http.StatusBadRequest)

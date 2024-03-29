@@ -229,6 +229,17 @@ func main() {
 }
 
 
+func getLoggedInUser(r *http.Request) (*User) {
+	var loggedInUser *User
+	session, _ := store.Get(r, "session")
+	userID, ok := session.Values["user_id"].(int) 
+	if ok {
+		loggedInUser, _ = getUser(userID)
+	}
+	return loggedInUser
+}
+
+
 func getUser(userID int) (*User, error) {
 	requestURL := fmt.Sprintf("%s/user/%d", serverEndpoint, userID)
 	res, err := http.Get(requestURL)
@@ -265,12 +276,11 @@ func messageToPost(res *http.Response) ([]Post) {
 
 func timelineHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session")
-	userID, ok := session.Values["user_id"].(int)
-	if !ok {
+	loggedInUser := getLoggedInUser(r)
+	if loggedInUser == nil {
 		http.Redirect(w, r, "/public_timeline", http.StatusFound)
 		return
 	}
-	loggedInUser, _ := getUser(userID)
 
 	requestURL := fmt.Sprintf("%s/msgsMy/%s?no=%d", serverEndpoint, loggedInUser.Username, perPage)
 	res, err := http.Get(requestURL)
@@ -292,12 +302,8 @@ func timelineHandler(w http.ResponseWriter, r *http.Request) {
 
 
 func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
-	var loggedInUser *User
 	session, _ := store.Get(r, "session")
-	userID, ok := session.Values["user_id"].(int) 
-	if ok {
-		loggedInUser, _ = getUser(userID)
-	}
+	loggedInUser := getLoggedInUser(r)
 
 	requestURL := fmt.Sprintf("%s/msgs?no=%d", serverEndpoint, perPage)
 	res, err := http.Get(requestURL)
@@ -320,17 +326,14 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 
 
 func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
+	session, _ := store.Get(r, "session")
   vars := mux.Vars(r)
 	profileUser := vars["username"]
 
-	var loggedInUser *User
-	session, _ := store.Get(r, "session")
-	userID, ok := session.Values["user_id"].(int)
-
 	followed := false
 
-	if ok {
-		loggedInUser, _ = getUser(userID)
+	loggedInUser := getLoggedInUser(r)
+	if loggedInUser != nil {
 		requestURLa := fmt.Sprintf("%s/fllws/%s/%s", serverEndpoint, loggedInUser.Username, profileUser)
 		fllwsRes, err := http.Get(requestURLa)
 		if err != nil {
@@ -365,23 +368,27 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	timelineTmpl.Execute(w, data)
 }
 
-
-func followUserHandler(w http.ResponseWriter, r *http.Request) {
+func handleFollow(w http.ResponseWriter, r *http.Request, isFollow bool) {
 	//Adds the current user as follower of the given user.
 	session, _ := store.Get(r, "session")
-	whoID, ok := session.Values["user_id"].(int)
-	if !ok {
+	whoUser := getLoggedInUser(r)
+	if whoUser == nil {
 		totalErrors.Inc()
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	whoUser, _ := getUser(whoID)
-
 	vars := mux.Vars(r)
-	whoUsername := vars["username"]
+	whomUsername := vars["username"]
 
-	body := []byte(fmt.Sprintf(`{"follow": "%s"}`, whoUsername))
+	var key string
+	if (isFollow) { 
+		key = "follow"
+	} else {
+		key = "unfollow"
+	}
+	body := []byte(fmt.Sprintf(`{"%s": "%s"}`, key, whomUsername))
+
 	requestURL := fmt.Sprintf("%s/fllws/%s", serverEndpoint, whoUser.Username)
 	_, err := http.Post(requestURL, "application/json", bytes.NewBuffer(body))
 	if err != nil {
@@ -391,55 +398,40 @@ func followUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session.AddFlash(fmt.Sprintf(`You are now following "%s"`, whoUsername))
+	var flashText string
+	if isFollow {
+		flashText = fmt.Sprintf(`You are now following "%s"`, whomUsername)
+	} else {
+	  flashText = fmt.Sprintf(`You are no longer following "%s"`, whomUsername)
+	}
+
+	session.AddFlash(flashText)
 	session.Save(r, w)
 
-	http.Redirect(w, r, fmt.Sprintf("/%s", whoUsername), http.StatusSeeOther)
+	http.Redirect(w, r, fmt.Sprintf("/%s", whomUsername), http.StatusSeeOther)
+}
+
+func followUserHandler(w http.ResponseWriter, r *http.Request) {
+	//Adds the current user as follower of the given user.
+	handleFollow(w, r, true)
 }
 
 
 func unfollowUserHandler(w http.ResponseWriter, r *http.Request) {
 	//Removes the current user as follower of the given user."
-	session, _ := store.Get(r, "session")
-	whoID, ok := session.Values["user_id"].(int)
-	if !ok {
-		totalErrors.Inc()
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	whoUser, _ := getUser(whoID)
-
-	vars := mux.Vars(r)
-	whoUsername := vars["username"]
-
-	body := []byte(fmt.Sprintf(`{"unfollow": "%s"}`, whoUsername))
-	requestURL := fmt.Sprintf("%s/fllws/%s", serverEndpoint, whoUser.Username)
-	_, err := http.Post(requestURL, "application/json", bytes.NewBuffer(body))
-	if err != nil {
-		fmt.Println(err)
-		totalErrors.Inc()
-		http.Error(w, "Server error", http.StatusInternalServerError)
-		return
-	}
-
-	session.AddFlash(fmt.Sprintf(`You are no longer following "%s"`, whoUsername))
-	session.Save(r, w)
-
-	http.Redirect(w, r, fmt.Sprintf("/%s", whoUsername), http.StatusSeeOther)
+	handleFollow(w, r, false)
 }
 
 
 func addMessageHandler(w http.ResponseWriter, r *http.Request) {
   //Registers a new message for the user.
 	session, _ := store.Get(r, "session")
-	userID, ok := session.Values["user_id"].(int)
-	if !ok {
+	loggedInUser := getLoggedInUser(r)
+	if loggedInUser == nil {
 		totalErrors.Inc()
 		http.Error(w, "Not logged in", http.StatusUnauthorized)
 		return
 	}
-	loggedInUser, _ := getUser(userID)
 
 	err := r.ParseForm()
 	if err != nil {
@@ -455,9 +447,6 @@ func addMessageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	body := []byte(fmt.Sprintf(`{"Content": "%s"}`, text))
-	fmt.Printf(`{"Content": "%s"}\n`, text)
-	fmt.Printf("%s/msgs/%s", serverEndpoint, loggedInUser.Username)
-
 	requestURL := fmt.Sprintf("%s/msgs/%s", serverEndpoint, loggedInUser.Username)
 	res, err := http.Post(requestURL, "application/json", bytes.NewBuffer(body))
 	if err != nil {
@@ -478,7 +467,8 @@ func addMessageHandler(w http.ResponseWriter, r *http.Request) {
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session")
-	if _, ok := session.Values["user_id"]; ok {
+	loggedInUser := getLoggedInUser(r)
+	if loggedInUser != nil {
 		http.Redirect(w, r, "/timeline", http.StatusSeeOther)
 		return
 	}
@@ -494,7 +484,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		
 		session.Save(r, w)
-		loginTmpl.Execute(w, data)
+		registerTmpl.Execute(w, data)
 	}()
 	
 	if isPostRequest {
@@ -540,7 +530,8 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session")
-	if _, ok := session.Values["user_id"]; ok {
+	loggedInUser := getLoggedInUser(r)
+	if loggedInUser != nil {
 		http.Redirect(w, r, "/timeline", http.StatusSeeOther)
 		return
 	}
@@ -570,7 +561,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		requestURL := fmt.Sprintf("%s/login", serverEndpoint)
 		res, err := http.Post(requestURL, "application/json", bytes.NewBuffer(body))
 		if err != nil {
-			totalErrors.Inc()
 			fmt.Println(err)
 			loginError = "Server error"
 			return
@@ -642,16 +632,16 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 
-func (u Post) Gravatar(size int) (string) {
+func (p Post) Gravatar(size int) (string) {
 	// Return the gravatar image for the user's username.
-	hash := md5.Sum([]byte(u.Username))
+	hash := md5.Sum([]byte(p.Username))
 	encoded := hex.EncodeToString(hash[:])
 	return fmt.Sprintf("http://www.gravatar.com/avatar/%v?d=identicon&s=%v", encoded, size)
 }
 
 
-func (m Post) FormatDatetime() (string) {
+func (p Post) FormatDatetime() (string) {
 	// Format a timestamp for display.
-	t := time.Unix(int64(m.PubDate), 0)
+	t := time.Unix(int64(p.PubDate), 0)
 	return t.Local().Format(time.ANSIC)
 }
