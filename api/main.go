@@ -128,6 +128,7 @@ var totalErrors = prometheus.NewCounter(
 
 var dbPath = "./data/minitwit.db"
 
+
 func main() {
 	flag.StringVar(&env, "env", "dev", "Environment to run the server in")
 	flag.Parse()
@@ -163,6 +164,7 @@ func main() {
   http.ListenAndServe(":5001", r)
 }
 
+
 func initDB() {
 	log.Println("Initialising the database...")
 
@@ -183,6 +185,7 @@ func initDB() {
 	}
 	db.Close()
 }
+
 
 func connectDB() (*sql.DB, error) {
 	if env == "test" {
@@ -217,6 +220,7 @@ func connectDB() (*sql.DB, error) {
 	panic("Unknown environment")
 }
 
+
 func beforeRequest(next http.Handler) http.Handler {
   return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Logic to be executed before passing the request to the main handler
@@ -231,6 +235,7 @@ func beforeRequest(next http.Handler) http.Handler {
   }) 
 }
 
+
 func getUserID(username string) (int, error) {
 	var userID int
 	databaseAccesses.Inc()
@@ -241,6 +246,7 @@ func getUserID(username string) (int, error) {
 	}
 	return userID, nil
 }
+
 
 func getUserIDHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -265,6 +271,7 @@ func getUser(userID int) (*User) {
 	return &user
 }
 
+
 func getUserHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userID := vars["userID"]
@@ -278,6 +285,7 @@ func getUserHandler(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, string(data))
 }
 
+
 func notReqFromSimulator(w http.ResponseWriter, r *http.Request) (bool) {
 	fromSimulator := r.Header.Get("Authorization")
 	if false && fromSimulator != "Basic c2ltdWxhdG9yOnN1cGVyX3NhZmUh" {
@@ -288,6 +296,7 @@ func notReqFromSimulator(w http.ResponseWriter, r *http.Request) (bool) {
 	}
 	return false
 }
+
 
 func updateLatest(w http.ResponseWriter, r *http.Request) {
 	parsedCommandID, err := strconv.Atoi(r.URL.Query().Get("latest"))
@@ -313,6 +322,7 @@ func updateLatest(w http.ResponseWriter, r *http.Request) {
 	}		
 }
 
+
 func getLatestHandler(w http.ResponseWriter, r *http.Request) {
 	_, err = os.Stat("./latest_processed_sim_action_id.txt")
 	if err != nil {
@@ -333,6 +343,7 @@ func getLatestHandler(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, fmt.Sprintf("{\"latest\":%d}", content))
 	}
 }
+
 
 func msgsHandler(w http.ResponseWriter, r *http.Request) {
 	updateLatest(w, r)
@@ -383,6 +394,7 @@ func msgsHandler(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, string(data))
 	}
 }
+
 
 func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 	updateLatest(w, r)
@@ -462,6 +474,7 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
 
 func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 	updateLatest(w, r)
@@ -552,6 +565,7 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+
 func doesFllwUserHandler(w http.ResponseWriter, r *http.Request) {
 	updateLatest(w, r)
 	reqErr := notReqFromSimulator(w, r)
@@ -585,6 +599,7 @@ func doesFllwUserHandler(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, "true")
 	}
 }
+
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
 	updateLatest(w, r)

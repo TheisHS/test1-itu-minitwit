@@ -190,6 +190,7 @@ var serverEndpoint = "http://minitwitapi:5001"
 
 var dbPath = "./data/minitwit.db"
 
+
 func main() {
 	//os.Remove(dbPath)
 
@@ -244,6 +245,7 @@ func main() {
   http.ListenAndServe(":5000", r)
 }
 
+
 func connectDB() (*sql.DB, error) {
 	if env == "test" {
 		db, err := sql.Open("sqlite3", dbPath)
@@ -277,6 +279,7 @@ func connectDB() (*sql.DB, error) {
 	panic("Unknown environment")
 }
 
+
 func beforeRequest(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Logic to be executed before passing the request to the main handler
@@ -290,6 +293,7 @@ func beforeRequest(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
     }) 
 }
+
 
 func initDB() {
 	log.Println("Initialising the database...")
@@ -312,6 +316,7 @@ func initDB() {
 	db.Close()
 }
 
+
 func getUserID(username string) (int, error) {
 	requestURL := fmt.Sprintf("%s/userID/%s", serverEndpoint, username)
 	res, err := http.Get(requestURL)
@@ -332,6 +337,7 @@ func getUserID(username string) (int, error) {
 	return userID, nil
 }
 
+
 func getUser(userID int) (*User, error) {
 	requestURL := fmt.Sprintf("%s/user/%d", serverEndpoint, userID)
 	res, err := http.Get(requestURL)
@@ -343,6 +349,7 @@ func getUser(userID int) (*User, error) {
 	json.NewDecoder(res.Body).Decode(&user)
 	return &user, nil
 }
+
 
 func timelineHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session")
@@ -385,9 +392,8 @@ func timelineHandler(w http.ResponseWriter, r *http.Request) {
 	session.Save(r, w)
 	
 	timelineTmpl.Execute(w, data)
-
-	//rnd.HTML(w, http.StatusOK, "timeline", nil)
 }
+
 
 func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	var user *User
@@ -417,6 +423,7 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	
 	timelineTmpl.Execute(w, data)
 }
+
 
 func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
   vars := mux.Vars(r)
@@ -460,6 +467,7 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	timelineTmpl.Execute(w, data)
 }
 
+
 func followUserHandler(w http.ResponseWriter, r *http.Request) {
 	//Adds the current user as follower of the given user.
 	session, _ := store.Get(r, "session")
@@ -493,6 +501,7 @@ func followUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, fmt.Sprintf("/%s", username), http.StatusSeeOther)
 }
+
 
 func unfollowUserHandler(w http.ResponseWriter, r *http.Request) {
     //Removes the current user as follower of the given user."
@@ -529,6 +538,7 @@ func unfollowUserHandler(w http.ResponseWriter, r *http.Request) {
 	//TODO: flash('You are no longer following "%s"' % username) -> Implement flash in Go
 	http.Redirect(w, r, fmt.Sprintf("/%s", username), http.StatusSeeOther)
 }
+
 
 func addMessageHandler(w http.ResponseWriter, r *http.Request) {
     //Registers a new message for the user.
@@ -567,6 +577,7 @@ func addMessageHandler(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, "/timeline", http.StatusSeeOther)
 }
+
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session")
@@ -612,6 +623,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	
 	registerTmpl.Execute(w, data)
 }
+
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	session, err := store.Get(r, "session")
@@ -675,15 +687,18 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w,r, "/public_timeline", http.StatusSeeOther)
 }
 
+
 func GetMD5Hash(text string) string {
 	hash := md5.Sum([]byte(text))
 	return hex.EncodeToString(hash[:])
 }
 
+
 func (u Post) Gravatar(size int) (string) {
 	// Return the gravatar image for the user's username.
 	return fmt.Sprintf("http://www.gravatar.com/avatar/%v?d=identicon&s=%v", GetMD5Hash(u.Username), size)
 }
+
 
 func (m Post) FormatDatetime() (string) {
 	// Format a timestamp for display.
