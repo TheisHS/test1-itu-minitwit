@@ -263,7 +263,7 @@ func getUserID(username string) (int, error) {
   databaseAccesses.Inc()
   err = db.QueryRow(`SELECT user_id FROM "user" WHERE username = $1`, username).Scan(&userID)
   if err != nil {
-    totalErrors.Inc()
+    devLog(fmt.Sprintf("Could not find user %s", username))
     return 0, err
   }
   return userID, nil
@@ -275,6 +275,7 @@ func getUserIDHandler(w http.ResponseWriter, r *http.Request) {
   username := vars["username"]
   userID, err := getUserID(username)
   if err != nil {
+    totalErrors.Inc()
     http.Error(w, err.Error(), http.StatusNotFound)
     return
   }
@@ -291,7 +292,6 @@ func getUser(userID int) (*User) {
           WHERE user_id = $1
         `, userID).Scan(&user.UserID, &user.Username, &user.Email)
   if err == sql.ErrNoRows {
-    totalErrors.Inc()
     return nil
   }
   return &user
@@ -375,6 +375,34 @@ func getLatestHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 
+func getMessages(query string, args ...any) ([]M, error) {
+  databaseAccesses.Inc()
+  rows, err := db.Query(query, args...)
+  if err != nil {
+    devLog(fmt.Sprintf("Error in db.Query(%s)", query))
+    return nil, err
+  }
+
+  defer rows.Close()
+  
+  var filteredMessages []M
+
+  for rows.Next() {
+    var message Message
+    var author User
+    err = rows.Scan(&message.Text, &message.PubDate, &author.Username)
+    if err != nil {
+      devLog("Error in rows.Scan in getMessageList()")
+      return nil, err
+    }
+    filteredMessage := M{"content": message.Text, "pub_date": message.PubDate, "user": author.Username}
+    filteredMessages = append(filteredMessages, filteredMessage)
+  }
+
+  return filteredMessages, nil
+}
+
+
 func msgsHandler(w http.ResponseWriter, r *http.Request) {
   updateLatest(w, r)
   reqErr := notReqFromSimulator(w, r)
@@ -389,37 +417,20 @@ func msgsHandler(w http.ResponseWriter, r *http.Request) {
       io.WriteString(w, "[]")
       return
     }
-    databaseAccesses.Inc()
-    rows, err := db.Query(`
-                   SELECT message.text, message.pub_date, "user".username 
-                   FROM message, "user" 
-                   WHERE message.flagged = 0 AND message.author_id = "user".user_id 
-                   ORDER BY message.pub_date DESC LIMIT $1
-                 `, noMsgs)
-    if err != nil {
-        totalErrors.Inc()
-        fmt.Println("error when db.Query in msgsHandler")
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-      }
-    defer rows.Close()
-  
-    var filteredMessages []M
-    for rows.Next() {
-      var message Message
-      var author User
-      err = rows.Scan(&message.Text, &message.PubDate, &author.Username)
-      if err != nil {
-        totalErrors.Inc()
-        fmt.Println("error when rows.Scan() in msgsHandler")
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-      }
-      filteredMessage := M{"content": message.Text, "pub_date": message.PubDate, "user": author.Username}
-      filteredMessages = append(filteredMessages, filteredMessage)
-    }  
+    messages, err := getMessages(`
+        SELECT message.text, message.pub_date, "user".username 
+        FROM message, "user" 
+        WHERE message.flagged = 0 AND message.author_id = "user".user_id 
+        ORDER BY message.pub_date DESC LIMIT $1
+      `, noMsgs)
 
-    data, _ := json.Marshal(filteredMessages)
+    if err != nil {
+      totalErrors.Inc()
+      http.Error(w, err.Error(), http.StatusInternalServerError)
+      return
+    }
+
+    data, _ := json.Marshal(messages)
     io.WriteString(w, string(data))
   }
 }
@@ -430,7 +441,6 @@ func msgsPersonalHandler(w http.ResponseWriter, r *http.Request) {
   vars := mux.Vars(r)
   username := vars["username"]
   userID, err := getUserID(username)
-
   if err != nil {
     totalErrors.Inc()
     http.Error(w, err.Error(), http.StatusNotFound)
@@ -443,41 +453,25 @@ func msgsPersonalHandler(w http.ResponseWriter, r *http.Request) {
       io.WriteString(w, "[]")
       return
     }
-    databaseAccesses.Inc()
-    rows, err := db.Query(`
-                   SELECT message.text, message.pub_date, "user".username 
-                   FROM message, "user" 
-                   WHERE message.flagged = 0 
-                     AND message.author_id = "user".user_id 
-                     AND ("user".user_id = $1 OR "user".user_id in (
-                       SELECT whom_id FROM follower WHERE who_id = $2
-                      )) 
-                   ORDER BY message.pub_date DESC LIMIT $3
-                 `, userID, userID, noMsgs)
-    if err != nil {
-        totalErrors.Inc()
-        fmt.Println("error when db.Query in msgsHandler")
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-      }
-    defer rows.Close()
-  
-    var filteredMessages []M
-    for rows.Next() {
-      var message Message
-      var author User
-      err = rows.Scan(&message.Text, &message.PubDate, &author.Username)
-      if err != nil {
-        totalErrors.Inc()
-        fmt.Println("error when rows.Scan() in msgsHandler")
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-      }
-      filteredMessage := M{"content": message.Text, "pub_date": message.PubDate, "user": author.Username}
-      filteredMessages = append(filteredMessages, filteredMessage)
-    }  
 
-    data, _ := json.Marshal(filteredMessages)
+    messages, err := getMessages(`
+        SELECT message.text, message.pub_date, "user".username 
+        FROM message, "user" 
+        WHERE message.flagged = 0 
+          AND message.author_id = "user".user_id 
+          AND ("user".user_id = $1 OR "user".user_id in (
+            SELECT whom_id FROM follower WHERE who_id = $2
+          )) 
+        ORDER BY message.pub_date DESC LIMIT $3
+      `, userID, userID, noMsgs)
+
+    if err != nil {
+      totalErrors.Inc()
+      http.Error(w, err.Error(), http.StatusInternalServerError)
+      return
+    }
+
+    data, _ := json.Marshal(messages)
     io.WriteString(w, string(data))
   }
 }
@@ -491,7 +485,6 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
   vars := mux.Vars(r)
   username := vars["username"]
   userID, err := getUserID(username)
-  
   if err != nil {
     totalErrors.Inc()
     http.Error(w, err.Error(), http.StatusNotFound)
@@ -501,37 +494,23 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
   if r.Method == http.MethodGet {
     noMsgs := r.URL.Query().Get("no")
     totalRequests.Inc()
-    databaseAccesses.Inc()
-    rows, err := db.Query(`
-                   SELECT message.text, message.pub_date, "user".username 
-                   FROM message, "user"
-                   WHERE message.flagged = 0 AND "user".user_id = message.author_id AND "user".user_id = $1 
-                   ORDER BY message.pub_date DESC LIMIT $2
-                 `, userID, noMsgs)
+
+    messages, err := getMessages(`
+        SELECT message.text, message.pub_date, "user".username 
+        FROM message, "user"
+        WHERE message.flagged = 0 
+          AND "user".user_id = message.author_id 
+          AND "user".user_id = $1 
+        ORDER BY message.pub_date DESC LIMIT $2
+      `, userID, noMsgs)
+
     if err != nil {
       totalErrors.Inc()
-      fmt.Println("Error in Query")
       http.Error(w, err.Error(), http.StatusInternalServerError)
       return
     }
-    defer rows.Close()
-  
-    var filteredMessages []M
-    for rows.Next() {
-      var message Message
-      var author User
-      err = rows.Scan(&message.Text, &message.PubDate, &author.Username)
-      if err != nil {
-        fmt.Println("Error in scan")
-        totalErrors.Inc()
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-      }
-      filteredMessage := M{"content": message.Text, "pub_date": message.PubDate, "user": author.Username}
-      filteredMessages = append(filteredMessages, filteredMessage)
-    }  
 
-    data, _ := json.Marshal(filteredMessages)
+    data, _ := json.Marshal(messages)
     io.WriteString(w, string(data))
   } else if r.Method == http.MethodPost {
     totalRequests.Inc()
@@ -540,12 +519,11 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
     }
     var data MessageData
     json.NewDecoder(r.Body).Decode(&data)
-    fmt.Printf("%v\n", data.Content)
     databaseAccesses.Inc()
     _, err := db.Exec(`
-                INSERT INTO message (author_id, text, pub_date, flagged) 
-                VALUES ($1, $2, $3, 0)
-              `, userID, data.Content, time.Now().Unix())
+        INSERT INTO message (author_id, text, pub_date, flagged) 
+        VALUES ($1, $2, $3, 0)
+      `, userID, data.Content, time.Now().Unix())
     if err != nil {
       totalErrors.Inc()
       devLog("Error in db.Exec in messagesPerUserHandler()")
@@ -590,7 +568,10 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
         return
       }
       databaseAccesses.Inc()
-      _, err = db.Exec("INSERT INTO follower (who_id, whom_id) VALUES ($1, $2)", whoID, whomID)
+      _, err = db.Exec(`
+          INSERT INTO follower (who_id, whom_id) 
+          VALUES ($1, $2)
+        `, whoID, whomID)
       if err != nil {
         totalErrors.Inc()
         http.Error(w, "Database error", http.StatusInternalServerError)
@@ -609,7 +590,10 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
       }
 
       databaseAccesses.Inc()
-      _, err = db.Exec("DELETE FROM follower WHERE who_id=$1 and WHOM_ID=$2", whoID, whomID)
+      _, err = db.Exec(`
+          DELETE FROM follower 
+          WHERE who_id=$1 and WHOM_ID=$2
+        `, whoID, whomID)
       if err != nil {
         totalErrors.Inc()
         http.Error(w, "Database error", http.StatusInternalServerError)
@@ -626,11 +610,11 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
     noFollowers, _ := strconv.Atoi(r.URL.Query().Get("no"))
     databaseAccesses.Inc()
     rows, err := db.Query(`
-                  SELECT "user".username 
-                  FROM "user" 
-                  INNER JOIN follower ON follower.whom_id="user".user_id 
-                  WHERE follower.who_id=$1 LIMIT $2
-                `, whoID, noFollowers)
+        SELECT "user".username 
+        FROM "user" 
+        INNER JOIN follower ON follower.whom_id="user".user_id 
+        WHERE follower.who_id=$1 LIMIT $2
+      `, whoID, noFollowers)
     if err != nil {
       totalErrors.Inc()
       http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -665,15 +649,13 @@ func doesFllwUserHandler(w http.ResponseWriter, r *http.Request) {
   whoID, err := getUserID(whoUsername)
   if err != nil {
     totalErrors.Inc()
-    devLog(fmt.Sprintf("Could not find user %s", &whoUsername))
-    http.Error(w, "who user not found", http.StatusNotFound)
+    http.Error(w, fmt.Sprintf("User %s not found", whoUsername), http.StatusNotFound)
     return
   }
   whomID, err := getUserID(whomUsername)
   if err != nil {
     totalErrors.Inc()
-    devLog(fmt.Sprintf("Could not find user %s", &whomUsername))
-    http.Error(w, "whom user not found", http.StatusNotFound)
+    http.Error(w, fmt.Sprintf("User %s not found", whomUsername), http.StatusNotFound)
     return
   }
   
@@ -682,9 +664,9 @@ func doesFllwUserHandler(w http.ResponseWriter, r *http.Request) {
     databaseAccesses.Inc()
     var x Follower
     err := db.QueryRow(`
-             SELECT * FROM follower 
-             WHERE follower.who_id=$1 AND follower.whom_id=$2
-           `, whoID, whomID).Scan(&x)
+        SELECT * FROM follower 
+        WHERE follower.who_id=$1 AND follower.whom_id=$2
+      `, whoID, whomID).Scan(&x)
     if err == sql.ErrNoRows {
       io.WriteString(w, "false")
       return
@@ -711,6 +693,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
     var data RegisterData
     json.NewDecoder(r.Body).Decode(&data)
     userID, _ := getUserID(data.Username)
+
     if len(data.Username) == 0 {
       devLog("No username")
       registerError = "You have to enter a username"
@@ -735,9 +718,9 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
       }
       databaseAccesses.Inc()
       _, err := db.Exec(`
-                  insert into "user" (username, email, pw_hash) 
-                  values ($1, $2, $3)
-                `, data.Username, data.Email, pwHash)
+          INSERT INTO "user" (username, email, pw_hash) 
+          VALUES ($1, $2, $3)
+        `, data.Username, data.Email, pwHash)
       if err != nil {
         totalErrors.Inc()
         http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -772,10 +755,10 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
     var user User
     databaseAccesses.Inc()
     err = db.QueryRow(`
-            SELECT user_id, username, pw_hash 
-            FROM "user" 
-            WHERE username = $1
-          `, data.Username).Scan(&user.UserID, &user.Username, &user.pwHash)
+        SELECT user_id, username, pw_hash 
+        FROM "user" 
+        WHERE username = $1
+      `, data.Username).Scan(&user.UserID, &user.Username, &user.pwHash)
 
     if err == sql.ErrNoRows {
       devLog("Username does not exist")
