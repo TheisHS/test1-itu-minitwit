@@ -387,3 +387,13 @@ DATABASE_URL = "postgresql://<USERNAME>:<PASSWORD>@host.docker.internal:5432/<DB
 To setup a database with postgres, you can use PGAdmin. Remember to initialise the database by running the sql commands from the `schema.sql` file. 
 
 > NOTE: Instead of the `xx_id integer primary key autoincrement`, you will have to write `xx_id serial primary key`, as autoincrement does not exist in psql.
+
+## April 1
+
+### Loggin with Promtail - Loki - Grafana
+
+Instead of en EFK / ELK / ELFK stack, we have gone with Promtail, Loki and Grafana, as we are already using Grafana in our monitoring setup.
+
+This was a good guide: https://www.youtube.com/watch?v=pnycjg_9M-o
+We used this package and setup for promtail client: https://github.com/afiskon/promtail-client/blob/master/examples/client-example/main.go
+We used this setup as an example setup for things with the alertmanager: https://github.com/rubencougil/loki
