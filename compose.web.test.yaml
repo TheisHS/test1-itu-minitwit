@@ -10,7 +10,7 @@ services:
     build:
       context: .
       dockerfile: ./api/Dockerfile
-    container_name: minitwitapi
+    container_name: minitwit_api
     networks:
       - main
     ports:
