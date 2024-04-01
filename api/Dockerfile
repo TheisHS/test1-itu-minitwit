@@ -20,6 +20,7 @@ RUN go mod download && go mod verify
 COPY api ./
 COPY schema.sql ./
 COPY .env ./
+RUN mkdir -p /usr/src/app/data
 
 # Compiles code into executable
 # -v prints names of packages as they are compiled

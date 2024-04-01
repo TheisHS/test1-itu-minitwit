@@ -15,7 +15,7 @@ import requests
 # import schema
 # import data
 # otherwise use the database that you got previously
-BASE_URL = "http://localhost:5000"
+BASE_URL = "http://minitwitclient:5000"
 
 def register(username, password, password2=None, email=None):
     """Helper function to register a user"""
@@ -60,33 +60,34 @@ def add_message(http_session, text):
 
 def test_register():
     """Make sure registering works"""
-    r = register('user1', 'default')
-    #assert 'You were successfully registered and can login now' in r.text # Logic is different in Go version
-    r = register('user1', 'default')
+    r = register('webuser1', 'default')
+    # assert 'You were successfully registered and can login now' in r.text # Logic is different in Go version
+    r = register('webuser1', 'default')
     assert 'The username is already taken' in r.text
     r = register('', 'default')
     assert 'You have to enter a username' in r.text
-    r = register('meh', '')
+    r = register('webmeh', '')
+    print(r.text)
     assert 'You have to enter a password' in r.text
-    r = register('meh', 'x', 'y')
+    r = register('webmeh', 'x', 'y')
     assert 'The two passwords do not match' in r.text
-    r = register('meh', 'foo', email='broken')
+    r = register('webmeh', 'foo', email='broken')
     assert 'You have to enter a valid email address' in r.text
 
 def test_login_logout():
     """Make sure logging in and logging out works"""
-    r, http_session = register_and_login('user1', 'default')
+    r, http_session = register_and_login('webuser1', 'default')
     assert 'You were logged in' in r.text
     r = logout(http_session)
     assert 'You were logged out' in r.text
-    r, _ = login('user1', 'wrongpassword')
+    r, _ = login('webuser1', 'wrongpassword')
     assert 'Invalid password' in r.text
-    r, _ = login('user2', 'wrongpassword')
+    r, _ = login('webuser2', 'wrongpassword')
     assert 'Invalid username' in r.text
 
 def test_message_recording():
     """Check if adding messages works"""
-    _, http_session = register_and_login('foo', 'default')
+    _, http_session = register_and_login('webfoo', 'default')
     add_message(http_session, 'test message 1')
     add_message(http_session, '<test message 2>')
     r = requests.get(f'{BASE_URL}/')
@@ -95,10 +96,10 @@ def test_message_recording():
 
 def test_timelines():
     """Make sure that timelines work"""
-    _, http_session = register_and_login('foo', 'default')
+    _, http_session = register_and_login('webfoo', 'default')
     add_message(http_session, 'the message by foo')
     logout(http_session)
-    _, http_session = register_and_login('bar', 'default')
+    _, http_session = register_and_login('webbar', 'default')
     add_message(http_session, 'the message by bar')
     r = http_session.get(f'{BASE_URL}/public_timeline')
     assert 'the message by foo' in r.text
@@ -110,8 +111,8 @@ def test_timelines():
     assert 'the message by bar' in r.text
 
     # now let's follow foo
-    r = http_session.get(f'{BASE_URL}/foo/follow', allow_redirects=True)
-    assert 'You are now following &#34;foo&#34;' in r.text
+    r = http_session.get(f'{BASE_URL}/webfoo/follow', allow_redirects=True)
+    assert 'You are now following &#34;webfoo&#34;' in r.text
 
     # we should now see foo's message
     r = http_session.get(f'{BASE_URL}/')
@@ -119,16 +120,16 @@ def test_timelines():
     assert 'the message by bar' in r.text
 
     # but on the user's page we only want the user's message
-    r = http_session.get(f'{BASE_URL}/bar')
+    r = http_session.get(f'{BASE_URL}/webbar')
     assert 'the message by foo' not in r.text
     assert 'the message by bar' in r.text
-    r = http_session.get(f'{BASE_URL}/foo')
+    r = http_session.get(f'{BASE_URL}/webfoo')
     assert 'the message by foo' in r.text
     assert 'the message by bar' not in r.text
 
     # now unfollow and check if that worked
-    r = http_session.get(f'{BASE_URL}/foo/unfollow', allow_redirects=True)
-    assert 'You are no longer following &#34;foo&#34;' in r.text
+    r = http_session.get(f'{BASE_URL}/webfoo/unfollow', allow_redirects=True)
+    assert 'You are no longer following &#34;webfoo&#34;' in r.text
     r = http_session.get(f'{BASE_URL}/')
     assert 'the message by foo' not in r.text
     assert 'the message by bar' in r.text

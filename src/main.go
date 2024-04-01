@@ -41,6 +41,7 @@ const (
 )
 
 func GeneratePasswordHash(password string) string {
+	if password == "" { return "" }
 	salt := genSalt()
 	hash := hashString(salt, password)
 	return fmt.Sprintf("%s:%v$%s$%s", Method, Iterations, salt, hash)
