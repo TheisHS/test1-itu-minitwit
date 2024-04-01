@@ -19,8 +19,7 @@ RUN go mod download && go mod verify
 
 # Copies the whole minitwit directory to the container
 COPY src ./
-COPY schema.sql ./
-COPY .env ./
+COPY schema.sql .env* ./
 
 # Compiles code into executable
 # -v prints names of packages as they are compiled
