@@ -5,8 +5,6 @@ FROM golang:1.21
 # Environment variable to enable C code in Go application
 # ENV CGO_ENABLED=1
 
-VOLUME ["/usr/src/app/data"]
-
 # WORKDIR sets the directory (or creates it) in the docker image
 WORKDIR /usr/src/app
 
@@ -21,12 +19,13 @@ RUN go mod download && go mod verify
 # Copies the whole minitwit directory to the container
 COPY api ./
 COPY schema.sql ./
+COPY .env ./
 
 # Compiles code into executable
 # -v prints names of packages as they are compiled
 # -o /usr/local/bin/app specifies output file of the executable. So the binary is called app and placed in bin/app within the image
 # ./... tells go build to build all Go packages starting from the current directory
-RUN go build -v -o /usr/local/bin/app ./...
+RUN mkdir -p /usr/src/app/data && go build -v -o /usr/local/bin/app ./...
 
 # -istest=$TEST
 # CMD sets the instruction to be executed when running the container from the image
