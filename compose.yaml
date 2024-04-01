@@ -10,6 +10,7 @@ services:
     build:
       context: .
       dockerfile: ./src/Dockerfile
+    container_name: minitwit
     networks:
       - main
     ports:
@@ -17,6 +18,8 @@ services:
     depends_on:
       - prometheus
       - grafana
+      - loki
+      - promtail
     command: ["app", "-env", "dev"]
 
   apiserver:
@@ -31,25 +34,58 @@ services:
     depends_on:
       - prometheus
       - grafana
+      - loki
+      - promtail
     command: ["app", "-env", "dev"]
 
   prometheus:
     image: prom/prometheus
     container_name: prometheus
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
     networks:
       - main
 
+  loki:
+    image: grafana/loki:2.0.0
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: "-config.file=/etc/loki/config.yaml"
+    volumes:
+      - ./configs/loki-config.yaml:/etc/loki/config.yaml
+    networks:
+      - main
+
+  promtail:
+    image: grafana/promtail:2.0.0 
+    container_name: promtail
+    volumes:
+      - ./configs/promtail-config.yaml:/etc/promtail/config.yaml:ro
+      - ./log:/var/log  
+    command: -config.file=/etc/promtail/config.yaml
+    networks:
+      - main
+
   grafana:
     image: grafana/grafana:10.2.4
+    container_name: grafana
     ports:
       - "3000:3000"
     networks:
       - main
 
-
-# We can look at https://github.com/docker/awesome-compose if we want to integrate other services at some point and manage their deployment
-# like MySQL, perhaps.
+  alertmanager:
+    image: prom/alertmanager
+    container_name: alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/config.yaml'
+      - '--storage.path=/alertmanager'
+    volumes:
+      - ./configs/alertmanager.yaml:/etc/alertmanager/config.yaml
+    ports:
+      - 9093:9093
+    networks:
+      - main

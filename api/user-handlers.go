@@ -76,6 +76,8 @@ func getUserHandler(w http.ResponseWriter, r *http.Request) {
 
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
+  promtailClient := getPromtailClient("registerHandler")
+  defer promtailClient.Shutdown()
   updateLatest(w, r)
   reqErr := notReqFromSimulator(w, r)
   if reqErr { return }
@@ -125,6 +127,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
       }
+      promtailClient.Infof("New user registered: %s, %s", data.Username, data.Email)
       w.WriteHeader(http.StatusNoContent)
       io.WriteString(w, "")
       return
@@ -141,6 +144,8 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
+  promtailClient := getPromtailClient("loginHandler")
+  defer promtailClient.Shutdown()
   var loginError string
   if r.Method == http.MethodPost {
     totalRequests.Inc()
@@ -170,6 +175,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
         return
       } 
       if ps[2] == data.PwdHash { 
+        promtailClient.Infof("User logged in: %s", user.Username)
         loginRequests.Inc()
         io.WriteString(w, fmt.Sprintf(`{"userID": %d}`, user.UserID))
         return

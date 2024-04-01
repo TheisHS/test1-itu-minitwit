@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -13,10 +12,12 @@ import (
 
 
 func getMessages(query string, args ...any) ([]M, error) {
+  promtailClient := getPromtailClient("getMessages")
+  defer promtailClient.Shutdown()
   databaseAccesses.Inc()
   rows, err := db.Query(query, args...)
   if err != nil {
-    devLog(fmt.Sprintf("Error in db.Query(%s)", query))
+    promtailClient.Errorf("Error in db.Query(%s)", query)
     return nil, err
   }
 
@@ -41,6 +42,8 @@ func getMessages(query string, args ...any) ([]M, error) {
 
 
 func msgsHandler(w http.ResponseWriter, r *http.Request) {
+  promtailClient := getPromtailClient("msgsHandler")
+  defer promtailClient.Shutdown()
   updateLatest(w, r)
   reqErr := notReqFromSimulator(w, r)
   if reqErr { 
@@ -49,6 +52,7 @@ func msgsHandler(w http.ResponseWriter, r *http.Request) {
 
   noMsgs := r.URL.Query().Get("no")
   if r.Method == http.MethodGet {
+    promtailClient.Infof("Get request for %s messages from the public timeline", noMsgs)
     totalRequests.Inc()
     if noMsgs == "" {
       io.WriteString(w, "[]")
@@ -63,6 +67,7 @@ func msgsHandler(w http.ResponseWriter, r *http.Request) {
 
     if err != nil {
       totalErrors.Inc()
+      promtailClient.Errorf("Error while fetching %s messages from the public timeline", noMsgs)
       http.Error(w, err.Error(), http.StatusInternalServerError)
       return
     }
@@ -74,6 +79,8 @@ func msgsHandler(w http.ResponseWriter, r *http.Request) {
 
 
 func msgsPersonalHandler(w http.ResponseWriter, r *http.Request) {
+  promtailClient := getPromtailClient("msgsPersonalHandler")
+  defer promtailClient.Shutdown()
   noMsgs := r.URL.Query().Get("no")
   vars := mux.Vars(r)
   username := vars["username"]
@@ -104,6 +111,7 @@ func msgsPersonalHandler(w http.ResponseWriter, r *http.Request) {
 
     if err != nil {
       totalErrors.Inc()
+      promtailClient.Errorf("Error while fetching %s messages", noMsgs)
       http.Error(w, err.Error(), http.StatusInternalServerError)
       return
     }
@@ -115,6 +123,8 @@ func msgsPersonalHandler(w http.ResponseWriter, r *http.Request) {
 
 
 func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
+  promtailClient := getPromtailClient("messagesPerUserHandler")
+  defer promtailClient.Shutdown()
   updateLatest(w, r)
   reqErr := notReqFromSimulator(w, r)
   if reqErr { return }
@@ -130,6 +140,7 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
   
   if r.Method == http.MethodGet {
     noMsgs := r.URL.Query().Get("no")
+    promtailClient.Infof("Get request for %s messages from %s", noMsgs, username)
     totalRequests.Inc()
 
     messages, err := getMessages(`
@@ -143,6 +154,7 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 
     if err != nil {
       totalErrors.Inc()
+      promtailClient.Errorf("Error while fetching %s messages from %s (userID: %d)", noMsgs, username, userID)
       http.Error(w, err.Error(), http.StatusInternalServerError)
       return
     }
@@ -163,10 +175,12 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
       `, userID, data.Content, time.Now().Unix())
     if err != nil {
       totalErrors.Inc()
+      promtailClient.Errorf("Error while creating post by %s (userID: %d): %s", username, userID, data.Content)
       devLog("Error in db.Exec in messagesPerUserHandler()")
       http.Error(w, "Database error", http.StatusInternalServerError)
       return
     }
+    promtailClient.Infof("New post created by %s: %s", username, data.Content)
     w.WriteHeader(http.StatusNoContent)
     io.WriteString(w, "")
     return

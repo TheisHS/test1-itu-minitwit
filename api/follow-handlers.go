@@ -14,6 +14,8 @@ import (
 
 
 func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
+  promtailClient := getPromtailClient("fllwsUserHandler")
+  defer promtailClient.Shutdown()
   updateLatest(w, r)
   reqErr := notReqFromSimulator(w, r)
   if reqErr { return }
@@ -21,8 +23,10 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
   vars := mux.Vars(r)
   username := vars["username"]
   whoID, err := getUserID(username)
+
   if err != nil {
     totalErrors.Inc()
+    promtailClient.Errorf(`User (who) "%s" not found in request to /fllws/%s`, username, username)
     http.Error(w, "User not found", http.StatusNotFound)
     return
   }
@@ -33,6 +37,7 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
   }
   
   if r.Method == http.MethodPost {
+    promtailClient.Infof("Post request to /fllws/%s", username)
     totalRequests.Inc()
     var data FollowsData
     json.NewDecoder(r.Body).Decode(&data)
@@ -40,6 +45,7 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
       whomID, err := getUserID(data.Follow)
       if err != nil {
         totalErrors.Inc()
+        promtailClient.Errorf(`User (whom) "%s" not found in follow request to /fllws/%s`, data.Follow, username)
         http.Error(w, "User not found", http.StatusNotFound)
         return
       }
@@ -50,10 +56,12 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
         `, whoID, whomID)
       if err != nil {
         totalErrors.Inc()
+        promtailClient.Errorf(`Error while inserting (who_id, whom_id) with values (%d, %d) into the database in request to /fllws/%s`, whoID, whomID, username)
         // http.Error(w, "Database error", http.StatusInternalServerError)
         // return
       }
       w.WriteHeader(http.StatusNoContent)
+      promtailClient.Infof("User %s now follows %s", username, data.Follow)
       io.WriteString(w, "")
       return
     }
@@ -61,6 +69,7 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
       whomID, err := getUserID(data.Unfollow)
       if err != nil {
         totalErrors.Inc()
+        promtailClient.Errorf(`User (whom) "%s" not found in unfollow request to /fllws/%s`, data.Follow, username)
         http.Error(w, "User not found", http.StatusNotFound)
         return
       }
@@ -72,16 +81,19 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
         `, whoID, whomID)
       if err != nil {
         totalErrors.Inc()
+        promtailClient.Errorf(`Error while deleting (who_id, whom_id) with values (%d, %d) from the database in request to /fllws/%s`, whoID, whomID, username)
         // http.Error(w, "Database error", http.StatusInternalServerError)
         // return
       }
       w.WriteHeader(http.StatusNoContent)
+      promtailClient.Infof("User %s no longer follows %s", username, data.Follow)
       io.WriteString(w, "")
       return
     }
   }
 
   if r.Method == http.MethodGet {
+    promtailClient.Infof("Get request to /fllws/%s", username)
     totalRequests.Inc()
     noFollowers, _ := strconv.Atoi(r.URL.Query().Get("no"))
     databaseAccesses.Inc()
@@ -93,6 +105,7 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
       `, whoID, noFollowers)
     if err != nil {
       totalErrors.Inc()
+      promtailClient.Errorf("Error while fetching %s of the users that user %s follows", noFollowers, username)
       http.Error(w, err.Error(), http.StatusInternalServerError)
       return
     }
