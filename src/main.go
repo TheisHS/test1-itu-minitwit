@@ -187,7 +187,7 @@ var tweetRequests = prometheus.NewCounter(
 	},
 )
 
-var serverEndpoint = "http://minitwitapi:5001"
+var serverEndpoint = "http://minitwit_api:5001"
 
 func main() {
 	store.Options = &sessions.Options{
@@ -287,6 +287,8 @@ func timelineHandler(w http.ResponseWriter, r *http.Request) {
 	res, err := http.Get(requestURL)
 	if err != nil {
 		fmt.Printf("error making http request to %s: %s\n", requestURL, err)
+		totalErrors.Inc()
+		http.Error(w, fmt.Sprintf("error making http request to %s: %s\n", requestURL, err), http.StatusNotFound)
 	}
 	posts := messageToPost(res)
 
@@ -310,6 +312,8 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	res, err := http.Get(requestURL)
 	if err != nil {
 		fmt.Printf("error making http request to %s: %s\n", requestURL, err)
+		totalErrors.Inc()
+		http.Error(w, fmt.Sprintf("error making http request to %s: %s\n", requestURL, err), http.StatusNotFound)
 	}
 	posts := messageToPost(res)
 
@@ -339,6 +343,8 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 		fllwsRes, err := http.Get(requestURLa)
 		if err != nil {
 			fmt.Printf("error making http request to %s: %s\n", requestURLa, err)
+			totalErrors.Inc()
+			http.Error(w, fmt.Sprintf("error making http request to %s: %s\n", requestURLa, err), http.StatusNotFound)	
 		}
 		fllwsBody, _ := io.ReadAll(fllwsRes.Body)
 		followed, err = strconv.ParseBool(string(fllwsBody))
@@ -352,6 +358,8 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	res, err := http.Get(requestURLb)
 	if err != nil {
 		fmt.Printf("error making http request to %s: %s\n", requestURLb, err)
+		totalErrors.Inc()
+		http.Error(w, fmt.Sprintf("error making http request to %s: %s\n", requestURLb, err), http.StatusNotFound)
 	}
 	posts := messageToPost(res)
 	
