@@ -24,7 +24,7 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	username := vars["username"]
 	whoID, err := getUserID(username)
-
+	totalRequests.Inc()
 	if err != nil {
 		totalErrors.Inc()
 		notFound.Inc()
@@ -40,12 +40,13 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodPost {
 		promtailClient.Infof("Post request to /fllws/%s", username)
-		totalRequests.Inc()
 		var data FollowsData
 		json.NewDecoder(r.Body).Decode(&data)
 		if data.Follow != "" {
+			totalFollowRequests.Inc()
 			whomID, err := getUserID(data.Follow)
 			if err != nil {
+				unsuccessfulFollowRequests.Inc()
 				totalErrors.Inc()
 				notFound.Inc()
 				promtailClient.Errorf(`User (whom) "%s" not found in follow request to /fllws/%s`, data.Follow, username)
@@ -53,13 +54,13 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			databaseAccesses.Inc()
-			totalFollowRequests.Inc()
 			_, err = db.Exec(`
           INSERT INTO follower (who_id, whom_id) 
           VALUES ($1, $2)
         `, whoID, whomID)
 			if err != nil {
 				totalErrors.Inc()
+				internalServerError.Inc()
 				unsuccessfulFollowRequests.Inc()
 				promtailClient.Errorf(`Error while inserting (who_id, whom_id) with values (%d, %d) into the database in request to /fllws/%s`, whoID, whomID, username)
 				// http.Error(w, "Database error", http.StatusInternalServerError)
@@ -71,8 +72,10 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if data.Unfollow != "" {
+			totalUnfollowRequests.Inc()
 			whomID, err := getUserID(data.Unfollow)
 			if err != nil {
+				unsuccessfulUnfollowRequests.Inc()
 				totalErrors.Inc()
 				notFound.Inc()
 				promtailClient.Errorf(`User (whom) "%s" not found in unfollow request to /fllws/%s`, data.Follow, username)
@@ -81,7 +84,6 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			databaseAccesses.Inc()
-			totalUnfollowRequests.Inc()
 			_, err = db.Exec(`
           DELETE FROM follower 
           WHERE who_id=$1 and WHOM_ID=$2
@@ -90,6 +92,7 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 				totalErrors.Inc()
 				unsuccessfulUnfollowRequests.Inc()
 				promtailClient.Errorf(`Error while deleting (who_id, whom_id) with values (%d, %d) from the database in request to /fllws/%s`, whoID, whomID, username)
+				internalServerError.Inc()
 				// http.Error(w, "Database error", http.StatusInternalServerError)
 				// return
 			}
@@ -102,7 +105,6 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodGet {
 		promtailClient.Infof("Get request to /fllws/%s", username)
-		totalRequests.Inc()
 		noFollowers, _ := strconv.Atoi(r.URL.Query().Get("no"))
 		databaseAccesses.Inc()
 		rows, err := db.Query(`
