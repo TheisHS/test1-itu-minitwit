@@ -43,6 +43,20 @@ func getUserIDHandler(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, strconv.Itoa(userID))
 }
 
+func getUserFromUsername(username string) *User {
+	var user User
+	databaseAccesses.Inc()
+	err = db.QueryRow(`
+      SELECT user_id, username, email 
+      FROM "user" 
+      WHERE username = $1
+    `, username).Scan(&user.UserID, &user.Username, &user.Email)
+	if err == sql.ErrNoRows {
+		return nil
+	}
+	return &user
+}
+
 func getUser(userID int) *User {
 	var user User
 	databaseAccesses.Inc()
@@ -58,15 +72,19 @@ func getUser(userID int) *User {
 }
 
 func getUserHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userID := vars["userID"]
 	var user *User
-	id, err := strconv.Atoi(userID)
-	if err != nil {
-		notFound.Inc()
-		http.Error(w, err.Error(), http.StatusNotFound)
-	}
-	user = getUser(id)
+	userID := r.URL.Query().Get("userID")
+	username := r.URL.Query().Get("username")
+	if userID != "" {
+		id, err := strconv.Atoi(userID)
+		if err != nil {
+			notFound.Inc()
+			http.Error(w, err.Error(), http.StatusNotFound)
+		}
+		user = getUser(id)
+	} else if username != "" {
+		user = getUserFromUsername(username)
+	} 
 	if user == nil {
 		io.WriteString(w, "")
 	} else {
