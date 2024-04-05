@@ -32,7 +32,7 @@ var totalErrors = prometheus.NewCounter(
 
 // add counters for requests and errors for the most used endpoints according to database cluster statistics.
 
-// This is the counter for the register requests.
+// This is the counter for the register requests
 // Register is the only endpoint that calls the getUserID function in the API
 var totalGetUserIDRequests = prometheus.NewCounter(
 	prometheus.CounterOpts{
