@@ -125,6 +125,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
           VALUES ($1, $2, $3)
         `, data.Username, data.Email, pwHash)
 			if err != nil {
+
 				totalErrors.Inc()
 				internalServerError.Inc()
 				http.Error(w, err.Error(), http.StatusInternalServerError)

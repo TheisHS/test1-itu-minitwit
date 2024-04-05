@@ -21,6 +21,7 @@ func updateLatest(w http.ResponseWriter, r *http.Request) {
 			internalServerError.Inc()
 			http.Error(w, "Failed to open file", http.StatusInternalServerError)
 			return
+
 		}
 		defer file.Close()
 

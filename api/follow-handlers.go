@@ -63,7 +63,7 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 				unsuccessfulFollowRequests.Inc()
 				promtailClient.Errorf(`Error while inserting (who_id, whom_id) with values (%d, %d) into the database in request to /fllws/%s`, whoID, whomID, username)
 				// http.Error(w, "Database error", http.StatusInternalServerError)
-				// return
+				//  return
 			}
 			w.WriteHeader(http.StatusNoContent)
 			promtailClient.Infof("User %s now follows %s", username, data.Follow)

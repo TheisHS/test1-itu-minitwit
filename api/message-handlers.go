@@ -31,6 +31,7 @@ func getMessages(query string, args ...any) ([]M, error) {
 		if err != nil {
 			devLog("Error in rows.Scan in getMessageList()")
 			return nil, err
+
 		}
 		filteredMessage := M{"content": message.Text, "pub_date": message.PubDate, "user": author.Username}
 		filteredMessages = append(filteredMessages, filteredMessage)

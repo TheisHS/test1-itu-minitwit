@@ -77,7 +77,7 @@ func beforeRequest(next http.Handler) http.Handler {
 func notReqFromSimulator(w http.ResponseWriter, r *http.Request) bool {
 	fromSimulator := r.Header.Get("Authorization")
 	if false && fromSimulator != "Basic c2ltdWxhdG9yOnN1cGVyX3NhZmUh" {
-		errMsg := "You are not authorized to use this resource!"
+		errMsg := "You are not authorized to use this resource!!"
 		w.WriteHeader(http.StatusUnauthorized)
 		io.WriteString(w, fmt.Sprintf(`{"status": 403, "error_msg": "%v"}`, errMsg))
 		return true
