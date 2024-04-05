@@ -69,13 +69,18 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session")
   vars := mux.Vars(r)
-	profileUser := vars["username"]
+	profileUsername := vars["username"]
+	profileUser, _ := getUserFromUsername(profileUsername)
+	if profileUser.Username != profileUsername {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
 
 	followed := false
 
 	loggedInUser := getLoggedInUser(r)
 	if loggedInUser != nil {
-		requestURLa := fmt.Sprintf("%s/fllws/%s/%s", serverEndpoint, loggedInUser.Username, profileUser)
+		requestURLa := fmt.Sprintf("%s/fllws/%s/%s", serverEndpoint, loggedInUser.Username, profileUsername)
 		fllwsRes, err := http.Get(requestURLa)
 		if err != nil {
 			fmt.Printf("error making http request to %s: %s\n", requestURLa, err)
@@ -90,7 +95,7 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	requestURLb := fmt.Sprintf("%s/msgs/%s?no=%d", serverEndpoint, profileUser, perPage)
+	requestURLb := fmt.Sprintf("%s/msgs/%s?no=%d", serverEndpoint, profileUsername, perPage)
 	res, err := http.Get(requestURLb)
 	if err != nil {
 		fmt.Printf("error making http request to %s: %s\n", requestURLb, err)
@@ -102,7 +107,7 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	// for rendering the HTML template
 	data := TimelinePageData{
 		User: loggedInUser,
-		ProfileUser: profileUser,
+		ProfileUser: profileUsername,
 		Followed: followed,
 		Posts: posts,
 		Flashes: session.Flashes(),

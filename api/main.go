@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 
@@ -34,7 +33,7 @@ func main() {
 	}
 	if env == "dev" {
 		if err := godotenv.Load(); err != nil {
-			log.Print("No .env file found")
+			fmt.Println("No .env file found")
 		}
 	}
 
@@ -53,7 +52,7 @@ func main() {
 	r.HandleFunc("/fllws/{username}", fllwsUserHandler).Methods("GET", "POST")
 	r.HandleFunc("/fllws/{whoUsername}/{whomUsername}", doesFllwUserHandler).Methods("GET")
 	r.HandleFunc("/userID/{username}", getUserIDHandler).Methods("GET")
-	r.HandleFunc("/user/{userID}", getUserHandler).Methods("GET")
+	r.HandleFunc("/getUser", getUserHandler).Methods("GET")
 
 	fmt.Println("Server is running on port 5001")
 	r.Use(beforeRequest)

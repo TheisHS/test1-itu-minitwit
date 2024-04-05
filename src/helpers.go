@@ -26,7 +26,18 @@ func getLoggedInUser(r *http.Request) (*User) {
 
 
 func getUser(userID int) (*User, error) {
-	requestURL := fmt.Sprintf("%s/user/%d", serverEndpoint, userID)
+	requestURL := fmt.Sprintf("%s/getUser?userID=%d", serverEndpoint, userID)
+	res, err := http.Get(requestURL)
+	if err != nil {
+		fmt.Printf("error making http request to %s: %s\n", requestURL, err)
+		return nil, err
+	}
+	var user User
+	json.NewDecoder(res.Body).Decode(&user)
+	return &user, nil
+}
+func getUserFromUsername(username string) (*User, error) {
+	requestURL := fmt.Sprintf("%s/getUser?username=%s", serverEndpoint, username)
 	res, err := http.Get(requestURL)
 	if err != nil {
 		fmt.Printf("error making http request to %s: %s\n", requestURL, err)
