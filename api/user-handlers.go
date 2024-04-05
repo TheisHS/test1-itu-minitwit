@@ -33,6 +33,8 @@ func getUserID(username string) (int, error) {
 func getUserIDHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	username := vars["username"]
+	username = strings.Replace(username, "%20", " ", -1)
+
 	userID, err := getUserID(username)
 	if err != nil {
 		totalErrors.Inc()
@@ -83,6 +85,7 @@ func getUserHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		user = getUser(id)
 	} else if username != "" {
+		username = strings.Replace(username, "%20", " ", -1)
 		user = getUserFromUsername(username)
 	} 
 	if user == nil {

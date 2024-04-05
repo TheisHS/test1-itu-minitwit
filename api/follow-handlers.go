@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"encoding/json"
 
@@ -23,6 +24,7 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	username := vars["username"]
+	username = strings.Replace(username, "%20", " ", -1)
 	whoID, err := getUserID(username)
 	totalRequests.Inc()
 	if err != nil {
@@ -147,7 +149,9 @@ func doesFllwUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	whoUsername := vars["whoUsername"]
+	whoUsername = strings.Replace(whoUsername, "%20", " ", -1)
 	whomUsername := vars["whomUsername"]
+	whomUsername = strings.Replace(whomUsername, "%20", " ", -1)
 	whoID, err := getUserID(whoUsername)
 	if err != nil {
 		totalErrors.Inc()

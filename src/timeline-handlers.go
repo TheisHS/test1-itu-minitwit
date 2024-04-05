@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
@@ -70,6 +71,7 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session")
   vars := mux.Vars(r)
 	profileUsername := vars["username"]
+	profileUsername = strings.Replace(profileUsername, "%20", " ", -1)
 	profileUser, _ := getUserFromUsername(profileUsername)
 	if profileUser.Username != profileUsername {
 		http.Error(w, "User not found", http.StatusNotFound)

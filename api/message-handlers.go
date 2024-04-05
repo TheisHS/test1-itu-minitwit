@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"encoding/json"
@@ -83,6 +84,7 @@ func msgsPersonalHandler(w http.ResponseWriter, r *http.Request) {
 	noMsgs := r.URL.Query().Get("no")
 	vars := mux.Vars(r)
 	username := vars["username"]
+	username = strings.Replace(username, "%20", " ", -1)
 	userID, err := getUserID(username)
 	if err != nil {
 		totalErrors.Inc()
@@ -133,6 +135,7 @@ func messagesPerUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	username := vars["username"]
+	username = strings.Replace(username, "%20", " ", -1)
 	userID, err := getUserID(username)
 	if err != nil {
 		totalErrors.Inc()

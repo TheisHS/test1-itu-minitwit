@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
@@ -35,6 +36,7 @@ func handleFollow(w http.ResponseWriter, r *http.Request, isFollow bool) {
 
 	vars := mux.Vars(r)
 	whomUsername := vars["username"]
+	whomUsername = strings.Replace(whomUsername, "%20", " ", -1)
 
 	var key string
 	if (isFollow) { 
