@@ -55,9 +55,6 @@ func main() {
 	loginTmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/login.html"))
 	registerTmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/register.html"))
 
-	flag.StringVar(&env, "env", "dev", "Environment to run the server in")
-	flag.Parse()
-
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(totalRequests, databaseAccesses, totalErrors, registerRequests, tweetRequests, loginRequests, unsuccessfulLoginRequests)
 	promHandler := promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
