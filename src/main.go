@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -12,6 +13,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/joho/godotenv"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -22,7 +24,7 @@ var (
 	store = sessions.NewCookieStore([]byte("bb9cfb7ab2a6e36d683b0b209f96bb33"))
 	perPage = 30
 	env string
-	serverEndpoint = "http://minitwit_api:5001"
+	serverEndpoint string
 )
 
 func main() {
@@ -33,6 +35,20 @@ func main() {
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
     //Secure:   true,
+	}
+
+	flag.StringVar(&env, "env", "dev", "Environment to run the server in")
+	flag.Parse()
+	if env == "dev" {
+		if err := godotenv.Load(); err != nil {
+			fmt.Println("No .env file found")
+		}
+	}
+	if env == "test" {
+		serverEndpoint = "http://minitwit_api:5001"
+	} else {
+		ip, _ := os.LookupEnv("API_IP")
+		serverEndpoint = "http://" + ip + ":4001"
 	}
 
 	timelineTmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/timeline.html"))
