@@ -48,7 +48,11 @@ func main() {
 		serverEndpoint = "http://minitwit_api:5001"
 	} else {
 		ip, _ := os.LookupEnv("API_IP")
-		serverEndpoint = "http://" + ip + ":4001"
+		if ip == "miniwit_api" { 
+			serverEndpoint = "http://" + ip + ":5001"
+		} else {
+			serverEndpoint = "http://" + ip + ":4001"
+		}
 	}
 
 	timelineTmpl = template.Must(template.Must(template.ParseFiles("templates/layout.html")).ParseFiles("templates/timeline.html"))
