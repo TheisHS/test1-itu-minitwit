@@ -48,7 +48,7 @@ func main() {
 		serverEndpoint = "http://minitwit_api:5001"
 	} else {
 		ip, _ := os.LookupEnv("API_IP")
-		if ip == "miniwit_api" { 
+		if ip == "minitwit_api" { 
 			serverEndpoint = "http://" + ip + ":5001"
 		} else {
 			serverEndpoint = "http://" + ip + ":4001"
