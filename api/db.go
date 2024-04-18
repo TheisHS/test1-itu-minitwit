@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"os"
+	"strings"
 )
 
 var (
@@ -52,7 +53,7 @@ func connectDB() (*sql.DB, error) {
         promtailClient.Errorf("Could not read from filepath %s", path)
         return nil, err
       }
-      db, err := sql.Open("postgres", string(connStr))
+      db, err := sql.Open("postgres", strings.Trim(string(connStr), "\n"))
       if err != nil {
           return nil, err
       }
