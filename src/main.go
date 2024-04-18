@@ -46,6 +46,18 @@ func main() {
 	}
 	if env == "test" {
 		serverEndpoint = "http://minitwit_api:5001"
+	} else if env == "dev" {
+		path, _ := os.LookupEnv("API_IP")
+		if path == "minitwit_api" { 
+			serverEndpoint = "http://" + path + ":5001"
+		} else {
+			ip, err := os.ReadFile(path)
+      if err != nil {
+				serverEndpoint = "http://" + path + ":4001"
+      } else {
+				serverEndpoint = "http://" + string(ip) + ":4001"
+			}
+		}
 	} else {
 		ip, _ := os.LookupEnv("API_IP")
 		if ip == "minitwit_api" { 
