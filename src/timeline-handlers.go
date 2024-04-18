@@ -12,7 +12,6 @@ import (
 )
 
 func timelineHandler(w http.ResponseWriter, r *http.Request) {
-	promtailClient := getPromtailClient("timelineHandler")
 	session, _ := store.Get(r, "session")
 	loggedInUser := getLoggedInUser(r)
 	if loggedInUser == nil {
@@ -23,14 +22,11 @@ func timelineHandler(w http.ResponseWriter, r *http.Request) {
 	requestURL := fmt.Sprintf("%s/msgsMy/%s?no=%d", serverEndpoint, loggedInUser.Username, perPage)
 	res, err := http.Get(requestURL)
 	if err != nil {
-		message := fmt.Sprintf("error making http request to %s: %s\n", requestURL, err)
-		promtailClient.Errorf(message)
-		fmt.Print(message)
+		fmt.Printf("error making http request to %s: %s\n", requestURL, err)
 		totalErrors.Inc()
-		http.Error(w, message, http.StatusNotFound)
+		http.Error(w, fmt.Sprintf("error making http request to %s: %s\n", requestURL, err), http.StatusNotFound)
 	}
 	posts := messageToPost(res)
-	promtailClient.Infof("Successfully retrieved %d posts for user %s", len(posts), loggedInUser.Username)
 
 	data := TimelinePageData{
 		User: loggedInUser,
@@ -45,22 +41,17 @@ func timelineHandler(w http.ResponseWriter, r *http.Request) {
 
 
 func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
-	promtailClient := getPromtailClient("publicTimelineHandler")
 	session, _ := store.Get(r, "session")
 	loggedInUser := getLoggedInUser(r)
 
 	requestURL := fmt.Sprintf("%s/msgs?no=%d", serverEndpoint, perPage)
 	res, err := http.Get(requestURL)
 	if err != nil {
-		message := fmt.Sprintf("error making http request to %s: %s\n", requestURL, err)
-		promtailClient.Errorf(message)
-		fmt.Print(message)
+		fmt.Printf("error making http request to %s: %s\n", requestURL, err)
 		totalErrors.Inc()
-		http.Error(w, message, http.StatusNotFound)
+		http.Error(w, fmt.Sprintf("error making http request to %s: %s\n", requestURL, err), http.StatusNotFound)
 	}
 	posts := messageToPost(res)
-	promtailClient.Infof("Successfully retrieved %d posts for user %s", len(posts), loggedInUser.Username)
-
 
 	data := TimelinePageData{
 		User: loggedInUser,
@@ -76,7 +67,6 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 
 
 func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
-	promtailClient := getPromtailClient("userTimelineHandler")
 	session, _ := store.Get(r, "session")
   vars := mux.Vars(r)
 	profileUsername := vars["username"]
@@ -93,11 +83,9 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 		requestURLa := fmt.Sprintf("%s/fllws/%s/%s", serverEndpoint, loggedInUser.Username, profileUsername)
 		fllwsRes, err := http.Get(requestURLa)
 		if err != nil {
-			message := fmt.Sprintf("error making http request to %s: %s\n", requestURLa, err)
-			promtailClient.Errorf(message)
-			fmt.Print(message)
+			fmt.Printf("error making http request to %s: %s\n", requestURLa, err)
 			totalErrors.Inc()
-			http.Error(w, message, http.StatusNotFound)
+			http.Error(w, fmt.Sprintf("error making http request to %s: %s\n", requestURLa, err), http.StatusNotFound)	
 		}
 		fllwsBody, _ := io.ReadAll(fllwsRes.Body)
 		followed, err = strconv.ParseBool(string(fllwsBody))
@@ -110,15 +98,12 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 	requestURLb := fmt.Sprintf("%s/msgs/%s?no=%d", serverEndpoint, profileUsername, perPage)
 	res, err := http.Get(requestURLb)
 	if err != nil {
-		message := fmt.Sprintf("error making http request to %s: %s\n", requestURLb, err)
-		promtailClient.Errorf(message)
-		fmt.Print(message)
+		fmt.Printf("error making http request to %s: %s\n", requestURLb, err)
 		totalErrors.Inc()
-		http.Error(w, message, http.StatusNotFound)
+		http.Error(w, fmt.Sprintf("error making http request to %s: %s\n", requestURLb, err), http.StatusNotFound)
 	}
 	posts := messageToPost(res)
-	promtailClient.Infof("Successfully retrieved %d posts for user %s", len(posts), loggedInUser.Username)
-
+	
 	// for rendering the HTML template
 	data := TimelinePageData{
 		User: loggedInUser,
