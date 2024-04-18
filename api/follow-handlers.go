@@ -78,7 +78,7 @@ func fllwsUserHandler(w http.ResponseWriter, r *http.Request) {
 				unsuccessfulUnfollowRequests.Inc()
 				totalErrors.Inc()
 				notFound.Inc()
-				promtailClient.Errorf(`User (whom) "%s" not found in unfollow request to /fllws/%s`, data.Follow, username)
+				promtailClient.Errorf(`User (whom) "%s" not found in unfollow request to /fllws/%s`, data.Unfollow, username)
 				http.Error(w, "User not found", http.StatusNotFound)
 				return
 			}
