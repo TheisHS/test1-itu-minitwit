@@ -34,7 +34,7 @@ func main() {
 		MaxAge:   3600 * 8, // 8 hours
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
-    //Secure:   true,
+		//Secure:   true,
 	}
 
 	flag.StringVar(&env, "env", "dev", "Environment to run the server in")
@@ -52,9 +52,9 @@ func main() {
 			serverEndpoint = "http://" + path + ":5001"
 		} else {
 			ip, err := os.ReadFile(path)
-      if err != nil {
+			if err != nil {
 				serverEndpoint = "http://" + path + ":4001"
-      } else {
+			} else {
 				serverEndpoint = "http://" + string(ip) + ":4001"
 			}
 		}
@@ -91,7 +91,7 @@ func main() {
 
 
 	fmt.Println("Server is running on port 5000")
-  http.ListenAndServe(":5000", r)
+	http.ListenAndServe(":5000", r)
 }
 
 
