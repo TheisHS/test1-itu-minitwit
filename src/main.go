@@ -34,7 +34,7 @@ func main() {
 		MaxAge:   3600 * 8, // 8 hours
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
-    //Secure:   true,
+		//Secure:   true,
 	}
 
 	flag.StringVar(&env, "env", "dev", "Environment to run the server in")
@@ -46,6 +46,18 @@ func main() {
 	}
 	if env == "test" {
 		serverEndpoint = "http://minitwit_api:5001"
+	} else if env == "dev" {
+		path, _ := os.LookupEnv("API_IP")
+		if path == "minitwit_api" { 
+			serverEndpoint = "http://" + path + ":5001"
+		} else {
+			ip, err := os.ReadFile(path)
+			if err != nil {
+				serverEndpoint = "http://" + path + ":4001"
+			} else {
+				serverEndpoint = "http://" + string(ip) + ":4001"
+			}
+		}
 	} else {
 		ip, _ := os.LookupEnv("API_IP")
 		if ip == "minitwit_api" { 
@@ -79,7 +91,7 @@ func main() {
 
 
 	fmt.Println("Server is running on port 5000")
-  http.ListenAndServe(":5000", r)
+	http.ListenAndServe(":5000", r)
 }
 
 

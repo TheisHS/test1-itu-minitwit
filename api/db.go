@@ -35,6 +35,8 @@ func initDB() {
 
 
 func connectDB() (*sql.DB, error) {
+  promtailClient := getPromtailClient("connectDB")
+
   if env == "test" {
     db, err := sql.Open("sqlite3", dbPath)
     if err != nil {
@@ -43,14 +45,20 @@ func connectDB() (*sql.DB, error) {
     return db, nil
   }
   if env == "dev" {
-    connStr, ok := os.LookupEnv("DATABASE_URL")
+    path, ok := os.LookupEnv("DATABASE_URL")
     if ok {
-      db, err := sql.Open("postgres", connStr)
+      connStr, err := os.ReadFile(path)
+      if err != nil {
+        promtailClient.Errorf("Could not read from filepath %s", path)
+        return nil, err
+      }
+      db, err := sql.Open("postgres", string(connStr))
       if err != nil {
           return nil, err
       }
       return db, nil
     }  
+    promtailClient.Errorf("DATABASE_URL not set")
     panic("DATABASE_URL not set!")
   }
   if env == "prod" {
