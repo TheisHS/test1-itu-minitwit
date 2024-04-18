@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
+	"github.com/afiskon/promtail-client/promtail"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -50,9 +51,14 @@ func getUserFromUsername(username string) (*User, error) {
 
 
 func messageToPost(res *http.Response) ([]Post) {
+	promtailClient := getPromtailClient("messageToPost")
+
 	var ins []map[string]interface{}
 	body, _ := io.ReadAll(res.Body)
-	json.Unmarshal(body, &ins)
+	err := json.Unmarshal(body, &ins)
+	if err != nil {
+		promtailClient.Errorf("Could not unmarshal response body: %s", err)
+	}
 
 	var posts []Post
 	for _, in := range ins {
@@ -82,4 +88,21 @@ func (p Post) FormatDatetime() (string) {
 	// Format a timestamp for display.
 	t := time.Unix(int64(p.PubDate), 0)
 	return t.Local().Format(time.ANSIC)
+}
+
+
+func getPromtailClient(f string) (promtail.Client) {
+  conf := promtail.ClientConfig{
+		PushURL:            "http://loki:3100/api/prom/push",
+		Labels:             fmt.Sprintf(`{source="minitwit-src", function="%s"}`, f),
+		BatchWait:          5 * time.Second,
+		BatchEntriesNumber: 10000,
+		SendLevel: 			promtail.INFO,
+		PrintLevel: 		promtail.ERROR,
+	}
+  promtailClient, err := promtail.NewClientJson(conf)
+  if err != nil {
+    return nil
+  }
+  return promtailClient
 }
