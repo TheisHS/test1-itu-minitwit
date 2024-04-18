@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -55,7 +56,7 @@ func main() {
 			if err != nil {
 				serverEndpoint = "http://" + path + ":4001"
 			} else {
-				serverEndpoint = "http://" + string(ip) + ":4001"
+				serverEndpoint = "http://" + strings.Trim(string(ip), "\n") + ":4001"
 			}
 		}
 	} else {
