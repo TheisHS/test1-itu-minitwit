@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"encoding/hex"
@@ -37,7 +38,7 @@ func getUser(userID int) (*User, error) {
 	return &user, nil
 }
 func getUserFromUsername(username string) (*User, error) {
-	requestURL := fmt.Sprintf("%s/getUser?username=%s", serverEndpoint, username)
+	requestURL := fmt.Sprintf("%s/getUser?username=%s", serverEndpoint, strings.Replace(username, " ", "%20", -1))
 	res, err := http.Get(requestURL)
 	if err != nil {
 		fmt.Printf("error making http request to %s: %s\n", requestURL, err)

@@ -50,12 +50,15 @@ func connectDB() (*sql.DB, error) {
     if ok {
       connStr, err := os.ReadFile(path)
       if err != nil {
-        promtailClient.Errorf("Could not read from filepath %s", path)
-        return nil, err
+        db, err := sql.Open("postgres", strings.Trim(path, "\n"))
+        if err != nil {
+          promtailClient.Errorf("Could not read from filepath %s", path)
+        }
+        return db, nil
       }
       db, err := sql.Open("postgres", strings.Trim(string(connStr), "\n"))
       if err != nil {
-          return nil, err
+        return nil, err
       }
       return db, nil
     }  
