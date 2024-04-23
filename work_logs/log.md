@@ -404,17 +404,22 @@ We used this setup as an example setup for things with the alertmanager: https:/
 Following some API crashes during the weekend, we can see from DigitalOcean that each time the server has crashed the CPU has reached 100%.
 As we have not configured docker swarm for our actual deployment server yet, only experimented on a separate cluster of nodes - where it works -, 
 we were lead to believe that the load balancer of the routing mesh would enable us to redirect to a “healthy” API replica in case of a crash.
-However, as the inherent “load balancer” of docker swarm is rather low-level, or in other words, 
-only redirects when a node is “unhealthy” aka. dead, we would like a dedicated load balancer.
 Obs. the reason we had not set up docker swarm for our actual deployment server was that we had some consistency concerns
 regarding our logging and monitoring setup across different droplets, and we wanted to make sure that we had a working setup before we actually deployed the swarm cluster, but
-this will have to wait until we have a more stable API.
+this will have to wait until we have a more stable API. As we have configured secrets etc. for the experimental swarm cluster (and use the up-to-date database), the quickest way for us to move on is simply notifying the DevOps team of a new API endpoint.
+However, as the inherent “load balancer” of docker swarm is rather low-level, or in other words,
+only redirects when a node is “unhealthy” aka. dead, we would like a dedicated load balancer outside the swarm.
 
 ### Nginx as a Load Balancer
-We have chosen to include a Nginx node as entry point/reverse proxy for our services.
-This also allows us to use CertBot to get free HTTPS certificates easily.
-Also, with a domain name (supplied free by ITU help desk) we can secure with SSL in accordance with last weeks security topic
-through a fancy domain name - woop! Obs. With HTTPS we can also use Metasploit to see vulnerabilities of our services, but more on this later.  
+We have chosen to include a Nginx node as reverse proxy for our services to balance the networking load.
+
+**bonus (SSL):**
+Nginx also allows us to use CertBot to get free HTTPS certificates quite easily.
+Also, with a domain name (supplied free by ITU help desk through one.com) we can secure with SSL in accordance with last week's security topic
+through a fancy domain name - woop! Obs. HTTPS is also required for Metasploit to see vulnerabilities of our services, but more on this later (or another day?).  
+As we had to change the API endpoint for the simulation to that of the swarm cluster anyway, we found this to be a good time to also change domain name and secure with SSL - also as 
+we are about to perform a security assessment of our services this is quite fitting.
+
 To use Nginx we have to add a new droplet in our DigitalOcean project, 
 install docker and create a new image to containerize following this guide: https://upcloud.com/resources/tutorials/load-balancing-docker-swarm-mode.
 Then, the load balancer will be deployed on its own single-node swarm - this separation helps in keeping the load 
@@ -434,5 +439,5 @@ server 64.226.85.146:4001;
 Now, we  have a running nginx node outside our swarm but in the same cloud-environment to handle trafficking and balancing 
 the load among the active replicas of each service (currently just the API). This does not remove the routing mesh “load balancing” but rather complements its 
 capabilities to the degree that we expect our API service to continue working even during high traffic. 
-This also means we have updated the API endpoint, which we submit in a PR and notify on the Teams site.
+
 
