@@ -412,14 +412,6 @@ only redirects when a node is “unhealthy” aka. dead, we would like a dedicat
 
 ### Nginx as a Load Balancer
 We have chosen to include a Nginx node as reverse proxy for our services to balance the networking load.
-
-**bonus (SSL):**
-Nginx also allows us to use CertBot to get free HTTPS certificates quite easily.
-Also, with a domain name (supplied free by ITU help desk through one.com) we can secure with SSL in accordance with last week's security topic
-through a fancy domain name - woop! Obs. HTTPS is also required for Metasploit to see vulnerabilities of our services, but more on this later (or another day?).  
-As we had to change the API endpoint for the simulation to that of the swarm cluster anyway, we found this to be a good time to also change domain name and secure with SSL - also as 
-we are about to perform a security assessment of our services this is quite fitting.
-
 To use Nginx we have to add a new droplet in our DigitalOcean project, 
 install docker and create a new image to containerize following this guide: https://upcloud.com/resources/tutorials/load-balancing-docker-swarm-mode.
 Then, the load balancer will be deployed on its own single-node swarm - this separation helps in keeping the load 
@@ -435,9 +427,18 @@ server 207.154.235.6:4001;
 server 64.226.85.146:4001;
 }
 ```
+Now, we  have a running nginx node outside our swarm but in the same cloud-environment to handle trafficking and balancing
+the load among the active replicas of each service (currently just the API). This does not remove the routing mesh “load balancing” but rather complements its
+capabilities to the degree that we expect our API service to continue working even during high traffic.
 
-Now, we  have a running nginx node outside our swarm but in the same cloud-environment to handle trafficking and balancing 
-the load among the active replicas of each service (currently just the API). This does not remove the routing mesh “load balancing” but rather complements its 
-capabilities to the degree that we expect our API service to continue working even during high traffic. 
+### Securing with SSL and adding a domain name
+Nginx simplifies the process of obtaining free HTTPS certificates through CertBot.
+We followed the instructions provided by CertBot:
+https://certbot.eff.org/instructions?ws=nginx&os=ubuntufocal
+to install CertBot and obtain a certificate for our domain. The domain was provided for free by ITU help desk through one.com.
+
+As from the security topic of last week it is quite important to secure our services with SSL encryption.
+Furthermore, as we are about to perform a security assessment of our services and we need to have a secure connection for Metasploit to see vulnerabilities of our services, this is quite fitting.
+Moreover, since we've already made adjustments to the API endpoint for the simulation by migrating to the swarm cluster, it is a good moment to update our domain name and implement SSL security measures as we have to notify the DevOps team of the new endpoint anyway.
 
 
