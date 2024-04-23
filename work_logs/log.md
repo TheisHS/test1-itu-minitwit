@@ -427,18 +427,23 @@ server 207.154.235.6:4001;
 server 64.226.85.146:4001;
 }
 ```
+
 Now, we  have a running nginx node outside our swarm but in the same cloud-environment to handle trafficking and balancing
 the load among the active replicas of each service (currently just the API). This does not remove the routing mesh “load balancing” but rather complements its
-capabilities to the degree that we expect our API service to continue working even during high traffic.
+capabilities to the degree that we expect our API service to continue working even during high traffic. 
+
+Moreover, as from the security topic of last week it is quite important to secure our services with SSL encryption.
+Furthermore, as we are about to perform a security assessment of our services and we need to have a secure connection for Metasploit to see vulnerabilities of our services, this is quite fitting time to add SSL.
+Moreover, since we've already made adjustments to the API endpoint for the simulation by migrating to the swarm cluster, it is a good moment to update our domain name and implement SSL security measures as we have to notify the DevOps team of the new endpoint anyway.
 
 ### Securing with SSL and adding a domain name
 Nginx simplifies the process of obtaining free HTTPS certificates through CertBot.
 We followed the instructions provided by CertBot:
 https://certbot.eff.org/instructions?ws=nginx&os=ubuntufocal
-to install CertBot and obtain a certificate for our domain. The domain was provided for free by ITU help desk through one.com.
+to install CertBot and obtain a certificate for our domain. The domain was provided for free by ITU help desk through one.com:
+`https://minitest1.dk`
 
-As from the security topic of last week it is quite important to secure our services with SSL encryption.
-Furthermore, as we are about to perform a security assessment of our services and we need to have a secure connection for Metasploit to see vulnerabilities of our services, this is quite fitting.
-Moreover, since we've already made adjustments to the API endpoint for the simulation by migrating to the swarm cluster, it is a good moment to update our domain name and implement SSL security measures as we have to notify the DevOps team of the new endpoint anyway.
+We did run into some issues regarding certificates and redirection... (Stender)
+
 
 
