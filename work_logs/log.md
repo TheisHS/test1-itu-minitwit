@@ -412,9 +412,9 @@ only redirects when a node is “unhealthy” aka. dead, we would like a dedicat
 
 ### Nginx as a Load Balancer
 We have chosen to include a Nginx node as reverse proxy for our services to balance the networking load.
-To use Nginx we have to add a new droplet in our DigitalOcean project. First we installed docker and created a new image to containerize following this guide: `https://upcloud.com/resources/tutorials/load-balancing-docker-swarm-mode`.
-Then, the load balancer will be deployed on its own single-node swarm - this separation helps in keeping the load 
-balancers' configuration and operation independent and focused solely on managing traffic. However, for simplicity we ended up running nginx directly on the VM instead of in a container.
+To use Nginx we have to add a new droplet in our DigitalOcean project. Our initial approach was to install docker and create a new image to containerize following this guide: `https://upcloud.com/resources/tutorials/load-balancing-docker-swarm-mode`.
+Then, the load balancer would be deployed on its own single-node swarm - this separation would help in keeping the load 
+balancers' configuration and operation independent and focus solely on managing traffic. However, for simplicity we ended up running nginx directly on the VM instead of in a container.
 To configure nginx seperated the configuration files into two parts, one for the api and one for the webserver.
 The configuration file for the api is as follows:
 ```
