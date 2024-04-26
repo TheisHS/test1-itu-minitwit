@@ -412,38 +412,60 @@ only redirects when a node is “unhealthy” aka. dead, we would like a dedicat
 
 ### Nginx as a Load Balancer
 We have chosen to include a Nginx node as reverse proxy for our services to balance the networking load.
-To use Nginx we have to add a new droplet in our DigitalOcean project, 
-install docker and create a new image to containerize following this guide: https://upcloud.com/resources/tutorials/load-balancing-docker-swarm-mode.
+To use Nginx we have to add a new droplet in our DigitalOcean project. First we installed docker and created a new image to containerize following this guide: `https://upcloud.com/resources/tutorials/load-balancing-docker-swarm-mode`.
 Then, the load balancer will be deployed on its own single-node swarm - this separation helps in keeping the load 
-balancers' configuration and operation independent and focused solely on managing traffic
-(though it does not have to be in a swarm at all, but it gives some benefits in consistency, integration,
-isolation, and scalability within the Docker ecosystem).  We then update the default.conf configuration file (within our nginx container)
-to add the IP addresses of the nodes hosting our services to the app-cluster managed by nginx:
-
+balancers' configuration and operation independent and focused solely on managing traffic. However, for simplicity we ended up running nginx directly on the VM instead of in a container.
+To configure nginx seperated the configuration files into two parts, one for the api and one for the webserver.
+The configuration file for the api is as follows:
 ```
-upstream appcluster {
-server 46.101.135.55:4001;
-server 207.154.235.6:4001;
-server 64.226.85.146:4001;
+upstream api_minitest1_backend {
+    server 46.101.135.55:4001;
+    server 207.154.235.6:4001;
+    server 64.226.85.146:4001;
 }
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api.minitest1.dk;
+
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name api.minitest1.dk;
+
+    (...) # SSL certificate and key for the domain and other configurations
+    }
 ```
+Basically, we have defined an upstream block that includes the IP addresses of the nodes in the swarm cluster, and then we have defined a server block that listens on port 80 and redirects to https.
+And then we have a server block that listens on port 443 and includes the SSL certificate and key for the domain (more on this later).
+The configuration file for the webserver follows the same pattern, however now we have to include the IP addresses of the webserver nodes in the upstream block instead.
 
 Now, we  have a running nginx node outside our swarm but in the same cloud-environment to handle trafficking and balancing
-the load among the active replicas of each service (currently just the API). This does not remove the routing mesh “load balancing” but rather complements its
+the load among the active replicas of each service (API and webserver). This does not remove the routing mesh “load balancing” but rather complements its
 capabilities to the degree that we expect our API service to continue working even during high traffic. 
 
 Moreover, as from the security topic of last week it is quite important to secure our services with SSL encryption.
-Furthermore, as we are about to perform a security assessment of our services and we need to have a secure connection for Metasploit to see vulnerabilities of our services, this is quite fitting time to add SSL.
+Furthermore, as we are about to perform a security assessment of our services, and we need to have a secure connection for Metasploit to see vulnerabilities of our services, this is quite fitting time to add SSL.
 Moreover, since we've already made adjustments to the API endpoint for the simulation by migrating to the swarm cluster, it is a good moment to update our domain name and implement SSL security measures as we have to notify the DevOps team of the new endpoint anyway.
 
 ### Securing with SSL and adding a domain name
 Nginx simplifies the process of obtaining free HTTPS certificates through CertBot.
 We followed the instructions provided by CertBot:
-https://certbot.eff.org/instructions?ws=nginx&os=ubuntufocal
-to install CertBot and obtain a certificate for our domain. The domain was provided for free by ITU help desk through one.com:
-`https://minitest1.dk`
+`https://certbot.eff.org/instructions?ws=nginx&os=ubuntufocal`
+to install CertBot and obtain a certificate for our domain. The domain was provided for free by ITU help desk through one.com, in which 
+we create two A records in the domain, one for the API and one for the webserver, pointing to the IP addresses of the droplets:
+- Webserver: `https://minitest1.dk`
+- API: `https://api.minittest1.dk`
 
-We did run into some issues regarding certificates and redirection... (Stender)
+We did run into some issues with the API certificate as the API does not have a website (we think?). After reading
+some articles we found this one: `https://www.digitalocean.com/community/tutorials/how-to-acquire-a-let-s-encrypt-certificate-using-dns-validation-with-acme-dns-certbot-on-ubuntu-18-04`
+which explains some issues with HTTP validation. 
+So, we used the acme-dns-certbot tool which connects CertBot to a third-party DNS service to verify the domain ownership of both our domain names, which worked for us.
+
 
 
 
