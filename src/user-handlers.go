@@ -28,6 +28,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		data := LoginPageData{
 			Error: registerError,
 			Flashes: session.Flashes(),
+			Endpoint: serverEndpoint,
 		}
 		
 		session.Save(r, w)
@@ -91,6 +92,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		data := LoginPageData{
 			Error: loginError,
 			Flashes: session.Flashes(),
+			Endpoint: serverEndpoint,
 		}
 		
 		session.Save(r, w)
