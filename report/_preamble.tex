@@ -43,8 +43,6 @@
 \newcommand{\dashline}{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -}
 %\newcommand{\dashline}{-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;--}
 
-\newcommand{\bibref}[1]{[\ref{#1}]}
-
 % Tabeller, afhængig af tabularx package
 \newcolumntype{R}{>{\raggedleft\arraybackslash}X}
 \newcolumntype{B}{>{\columncolor{mygray}\raggedright}X}
@@ -52,51 +50,9 @@
 \newcolumntype{C}{>{\centering\arraybackslash}X}
 
 
-% Matematik
-\renewcommand{\mod}{\textbf{ mod }}
-\newcommand{\mmod}{\text{mod }}
-\renewcommand{\lg}{\text{lg}}
-\renewcommand{\div}{\text{ div }}
-
-
-% Farver
-\definecolor{darkgreen}{HTML}{009900}
-\definecolor{dkgreen}{HTML}{21892F}
-\definecolor{myblue}{HTML}{3237C0}
-\definecolor{mygrey}{rgb}{0.5,0.5,0.5}
-\definecolor{lightergray}{rgb}{0.95,0.95,0.93}
-
 % farvet tekst, afhængig af colorx package
 \newcommand{\red}[1]{\textcolor{red}{#1}}
-\newcommand{\orange}[1]{\textcolor{YellowOrange}{#1}}
-\newcommand{\blue}[1]{\textcolor{myblue}{#1}}
-\newcommand{\grey}[1]{\textcolor{lightgray}{#1}}
-\newcommand{\green}[1]{\textcolor{darkgreen}{#1}}
 
 \captionsetup{justification=raggedright,singlelinecheck=false,font={color=mygrey,small}}
-
-
-\newcommand{\code}[1]{\colorbox{darkgray}{\textcolor{white}{\texttt{#1}}}}
-
-\definecolor{identifier}{HTML}{cf1a0c}
-\definecolor{keyword}{HTML}{3a50de}
-
-% Til kodebokse, afhængig af listings package
-\lstset{
-  frame=none,
-  basicstyle=\small\ttfamily,
-  language=Java,
-  aboveskip=3mm,
-  belowskip=-2mm,
-  showstringspaces=false,
-  backgroundcolor=\color{lightergray},
-  numbers=left, 
-  numberstyle=\tiny\color{mygrey},
-  breakatwhitespace=true,
-  framexleftmargin=6pt,
-  framextopmargin=2pt,
-  framexbottommargin=2pt, 
-  frame=tb, framerule=0pt,
-}
 
 \counterwithin{figure}{subsection}
