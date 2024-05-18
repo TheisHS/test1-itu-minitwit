@@ -43,6 +43,8 @@
 \newcommand{\dashline}{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -}
 %\newcommand{\dashline}{-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;-- \;\;--}
 
+\newcommand{\bibref}[1]{[\ref{#1}]}
+
 % Tabeller, afhængig af tabularx package
 \newcolumntype{R}{>{\raggedleft\arraybackslash}X}
 \newcolumntype{B}{>{\columncolor{mygray}\raggedright}X}
@@ -50,7 +52,11 @@
 \newcolumntype{C}{>{\centering\arraybackslash}X}
 
 
+% Farver
+\definecolor{mygrey}{rgb}{0.5,0.5,0.5}
+
 % farvet tekst, afhængig af colorx package
 \newcommand{\red}[1]{\textcolor{red}{#1}}
 
 \captionsetup{justification=raggedright,singlelinecheck=false,font={color=mygrey,small}}
+
