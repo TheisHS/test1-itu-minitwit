@@ -66,14 +66,23 @@ func connectDB() (*sql.DB, error) {
     panic("DATABASE_URL not set!")
   }
   if env == "prod" {
-    connStr, ok := os.LookupEnv("DATABASE_URL")
+    path, ok := os.LookupEnv("DATABASE_URL")
     if ok {
-      db, err := sql.Open("postgres", connStr)
+      connStr, err := os.ReadFile(path)
       if err != nil {
-          return nil, err
+        db, err := sql.Open("postgres", strings.Trim(path, "\n"))
+        if err != nil {
+          promtailClient.Errorf("Could not read from filepath %s", path)
+        }
+        return db, nil
+      }
+      db, err := sql.Open("postgres", strings.Trim(string(connStr), "\n"))
+      if err != nil {
+        return nil, err
       }
       return db, nil
     }  
+    promtailClient.Errorf("DATABASE_URL not set")
     panic("DATABASE_URL not set!")
   }
   panic("Unknown environment")
