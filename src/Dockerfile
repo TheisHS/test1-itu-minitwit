@@ -6,8 +6,6 @@ FROM golang:1.21
 # ENV CGO_ENABLED=1
 ENV SESSION_KEY="bb9cfb7ab2a6e36d683b0b209f96bb33"
 
-VOLUME ["/usr/src/app/data"]
-
 # WORKDIR sets the directory (or creates it) in the docker image
 WORKDIR /usr/src/app
 
@@ -21,7 +19,7 @@ RUN go mod download && go mod verify
 
 # Copies the whole minitwit directory to the container
 COPY src ./
-COPY schema.sql ./
+COPY schema.sql .env* ./
 
 # Compiles code into executable
 # -v prints names of packages as they are compiled

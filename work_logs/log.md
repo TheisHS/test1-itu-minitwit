@@ -366,6 +366,7 @@ GitHub Accept PR
 https://github.com/TheisHS/test1-itu-minitwit/pull/37
 
 
+
 ## March 22
 
 ### Optimizing Query Performance
@@ -387,3 +388,104 @@ and the query performance especially deleting a follower is quite notable:
 ![img_3.png](img_3.png)
 from a mean of 45 ms to 4 ms. We are a bit in doubt of how the indexing overhead affect the query performance. For instance, inserting to the follower table a new following pair is now a bit slower, but seems like a trade-off worth taking at the moment.
 We will have to monitor this over time.
+
+## March 28
+
+Updated circle ci pipeline to use hadolint for Dockerfile linting. Two ignore-rules have been added, these are common ignores in online examples. Current threshold is "info" level by default, this means that it will fail if we reach a severity equal to that or higher during linting.
+
+### Dockerfile errors
+**api-tests and src-tests:**
+- add version to packages
+- add --no-cache-dir -> Once a package is installed, it does not need to be re-installed and the Docker cache can be leveraged instead. Since the pip cache makes the images larger and is not needed, it's better to disable it.
+- Consolidate run commands -> https://github.com/hadolint/hadolint/wiki/DL3059
+
+### Client/server setup
+
+Setup client-server relationship between our webserver and apiserver. To run the program, it's required that the developer has a minitwit database setup on their computer, and created an `.env` file at the root of the directory with a connection string. The contents of the file will look something like the below, where `<USERNAME>` and `<PASSWORD>` are the local settings for psql on the computer, and `<DBNAME>` is the database name ("Minitwit" on my computer).
+
+`
+DATABASE_URL = "postgresql://<USERNAME>:<PASSWORD>@host.docker.internal:5432/<DBNAME>?sslmode=disable"
+`
+
+To setup a database with postgres, you can use PGAdmin. Remember to initialise the database by running the sql commands from the `schema.sql` file. 
+
+> NOTE: Instead of the `xx_id integer primary key autoincrement`, you will have to write `xx_id serial primary key`, as autoincrement does not exist in psql.
+
+## April 1
+
+### Loggin with Promtail - Loki - Grafana
+
+Instead of en EFK / ELK / ELFK stack, we have gone with Promtail, Loki and Grafana, as we are already using Grafana in our monitoring setup.
+
+This was a good guide: https://www.youtube.com/watch?v=pnycjg_9M-o
+We used this package and setup for promtail client: https://github.com/afiskon/promtail-client/blob/master/examples/client-example/main.go
+We used this setup as an example setup for things with the alertmanager: https://github.com/rubencougil/loki
+
+## April 23
+
+### Docker Swarm
+Following some API crashes during the weekend, we can see from DigitalOcean that each time the server has crashed the CPU has reached 100%.
+As we have not configured docker swarm for our actual deployment server yet, only experimented on a separate cluster of nodes - where it works -, 
+we were lead to believe that the load balancer of the routing mesh would enable us to redirect to a “healthy” API replica in case of a crash.
+Obs. the reason we had not set up docker swarm for our actual deployment server was that we had some consistency concerns
+regarding our logging and monitoring setup across different droplets, and we wanted to make sure that we had a working setup before we actually deployed the swarm cluster, but
+this will have to wait until we have a more stable API. As we have configured secrets etc. for the experimental swarm cluster (and use the up-to-date database), the quickest way for us to move on is simply notifying the DevOps team of a new API endpoint.
+However, as the inherent “load balancer” of docker swarm is rather low-level, or in other words,
+only redirects when a node is “unhealthy” aka. dead, we would like a dedicated load balancer outside the swarm.
+
+### Nginx as a Load Balancer
+We have chosen to include a Nginx node as reverse proxy for our services to balance the networking load.
+To use Nginx we have to add a new droplet in our DigitalOcean project. Our initial approach was to install docker and create a new image to containerize following this guide: `https://upcloud.com/resources/tutorials/load-balancing-docker-swarm-mode`.
+Then, the load balancer would be deployed on its own single-node swarm - this separation would help in keeping the load 
+balancers' configuration and operation independent and focus solely on managing traffic. However, for simplicity we ended up running nginx directly on the VM instead of in a container.
+To configure nginx seperated the configuration files into two parts, one for the api and one for the webserver.
+The configuration file for the api is as follows:
+```
+upstream api_minitest1_backend {
+    server 46.101.135.55:4001;
+    server 207.154.235.6:4001;
+    server 64.226.85.146:4001;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api.minitest1.dk;
+
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name api.minitest1.dk;
+
+    (...) # SSL certificate and key for the domain and other configurations
+    }
+```
+Basically, we have defined an upstream block that includes the IP addresses of the nodes in the swarm cluster, and then we have defined a server block that listens on port 80 and redirects to https.
+And then we have a server block that listens on port 443 and includes the SSL certificate and key for the domain (more on this later).
+The configuration file for the webserver follows the same pattern, however now we have to include the IP addresses of the webserver nodes in the upstream block instead.
+
+Now, we  have a running nginx node outside our swarm but in the same cloud-environment to handle trafficking and balancing
+the load among the active replicas of each service (API and webserver). This does not remove the routing mesh “load balancing” but rather complements its
+capabilities to the degree that we expect our API service to continue working even during high traffic. 
+
+Moreover, as from the security topic of last week it is quite important to secure our services with SSL encryption.
+Furthermore, as we are about to perform a security assessment of our services, and we need to have a secure connection for Metasploit to see vulnerabilities of our services, this is quite fitting time to add SSL.
+Moreover, since we've already made adjustments to the API endpoint for the simulation by migrating to the swarm cluster, it is a good moment to update our domain name and implement SSL security measures as we have to notify the DevOps team of the new endpoint anyway.
+
+### Securing with SSL and adding a domain name
+Nginx simplifies the process of obtaining free HTTPS certificates through CertBot.
+We followed the instructions provided by CertBot:
+`https://certbot.eff.org/instructions?ws=nginx&os=ubuntufocal`
+to install CertBot and obtain a certificate for our domain. The domain was provided for free by ITU help desk through one.com, in which 
+we create two A records in the domain, one for the API and one for the webserver, pointing to the IP addresses of the droplets:
+- Webserver: `https://minitest1.dk`
+- API: `https://api.minittest1.dk`
+
+We did run into some issues with the API certificate as the API does not have a website (we think?). After reading
+some articles we found this one: `https://www.digitalocean.com/community/tutorials/how-to-acquire-a-let-s-encrypt-certificate-using-dns-validation-with-acme-dns-certbot-on-ubuntu-18-04`
+which explains some issues with HTTP validation. 
+So, we used the acme-dns-certbot tool which connects CertBot to a third-party DNS service to verify the domain ownership of both our domain names, which worked for us.
+

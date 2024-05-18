@@ -2,19 +2,27 @@
 # This service is built from the Dockerfile in the current directory.
 # You can add other services your application may depend on here, such as a
 # database or a cache.
-services:  
+networks:
+  main:
+
+services:
   apiserver:
-    network_mode: "host"
     build:
       context: .
       dockerfile: ./api/Dockerfile
+    container_name: minitwit_api
+    networks:
+      - main
+    ports:
+      - '4001:5001'
     command: ["app", "-env", "test"]
 
   apitests:
-    network_mode: "host"
     build:
       context: .
       dockerfile: ./api-tests/Dockerfile
+    networks:
+      - main
     depends_on:
       - apiserver
 # We can look at https://github.com/docker/awesome-compose if we want to integrate other services at some point and manage their deployment
