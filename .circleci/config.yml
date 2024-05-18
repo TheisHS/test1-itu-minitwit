@@ -112,7 +112,7 @@ jobs:
         auth:
           username: $DOCKER_USERNAME
           password: $DOCKER_PASSWORD
-    resource_class: medium
+    resource_class: large
     description: |
       Compile tex file into pdf and output it into artifacts.
     parameters:
@@ -129,7 +129,7 @@ jobs:
           name: Compile .tex file into .pdf
           shell: /bin/bash
       - store_artifacts:
-          path: /report/build
+          path: report/build
 
 
 workflows:
