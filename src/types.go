@@ -39,15 +39,18 @@ type TimelinePageData struct {
 	Posts        []Post
 	Usermessages []UserMessage
 	Flashes      []interface{}
+	Endpoint     string
 }
 
 type LoginPageData struct {
-	User    *User
-	Error   string
-	Flashes []interface{}
+	User     *User
+	Error    string
+	Flashes  []interface{}
+	Endpoint string
 }
 
 type ServerError struct {
 	Status   int
 	ErrorMsg string
+	Endpoint string
 }

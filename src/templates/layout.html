@@ -25,6 +25,6 @@
   {{ end }}
   
   <div class="body">{{ template "body" . }}</div>
-  <div class="footer">MiniTwit &mdash; A Golang Application</div>
+  <div class="footer">MiniTwit &mdash; A Golang Application - {{ .Endpoint }}</div>
 </div>
 {{ define "title" }}Welcome{{ end }}

@@ -32,6 +32,7 @@ func timelineHandler(w http.ResponseWriter, r *http.Request) {
 		User: loggedInUser,
 		Posts: posts,
 		Flashes: session.Flashes(),
+		Endpoint: serverEndpoint,
 	}
 
 	session.Save(r, w)
@@ -58,6 +59,7 @@ func publicTimelineHandler(w http.ResponseWriter, r *http.Request) {
 		Posts: posts,
 		IsPublic: true,
 		Flashes: session.Flashes(),
+		Endpoint: serverEndpoint,
 	}
 
 	session.Save(r, w)
@@ -111,6 +113,7 @@ func userTimelineHandler(w http.ResponseWriter, r *http.Request) {
 		Followed: followed,
 		Posts: posts,
 		Flashes: session.Flashes(),
+		Endpoint: serverEndpoint,
 	}
 
 	session.Save(r, w)
