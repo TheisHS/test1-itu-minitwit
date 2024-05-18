@@ -1,0 +1,26 @@
+\section{Lessons Learned Perspective}
+Describe the biggest issues, how you solved them, and which are major lessons learned with regards to:
+
+evolution and refactoring
+operation, and
+maintenance
+of your ITU-MiniTwit systems. Link back to respective commit messages, issues, tickets, etc. to illustrate these.
+
+Also reflect and describe what was the "DevOps" style of your work. For example, what did you do differently to previous development projects and how did it work?
+
+
+\subsection{Key Challenges Faced}
+\subsubsection*{Problem-Solving Approaches}
+- Quick to notify each other on Discord, discuss severity and decide course of action. 
+- If one member was more involved with an issue, they would sit together with someone not involved -> both insider knowledge of how it is set up and should work, with a fresh mind seeing it from a different perspective.
+
+\subsubsection*{Lessons Learned from Issue Resolution}
+\subsection{Evolution and Refactoring}
+- Importance of modular solutions open for extension and easy to refactor, we experienced that often setting up something resulted in more issues than solved issues. Some of this is also due to the way the course is structured. First adapt everything to one type of database -> refactor everything to a new database. Same exercise with making the system scalable and going from docker to docker swarm.
+- Prioritisation
+\subsection{Operations and Maintenance}
+- Time consumption: bite the bullet and accept not everything can be done 100\% and if things break there might not be time to fix all of it.
+- Importance of tooling such as monitoring; Easily see if things are working properly at different layers of the system (frontend, api...), logging; Good tool for error debugging, codeclimate; 
+
+\subsection{Reflection on DevOps Practices}
+Log: feb9 (git branch setup, later march2 argue if static analysis removes need for manual reviews), feb25 (CI/CD, using pipelines in your project),  
