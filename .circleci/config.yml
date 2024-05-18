@@ -124,7 +124,7 @@ jobs:
       - run:
           command: |
             mkdir -p /report/build
-            pdflatex -output-directory /report/build /report/main.tex
+            pdflatex -output-directory /report/build <<parameters.file>>
           name: Compile .tex file into .pdf
           shell: /bin/bash
       - store_artifacts:
@@ -162,6 +162,7 @@ workflows:
           requires:
             - build_web
             - build_api
-  compile:
+  compile_latex:
     jobs:
-      - compile_latex
+      - compile_latex:
+          file: report/main.tex
