@@ -164,5 +164,4 @@ workflows:
             - build_api
   compile:
     jobs:
-      - latex-orb/compile:
-          file: /report/main.tex
+      - compile_latex
