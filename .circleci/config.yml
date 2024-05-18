@@ -123,13 +123,13 @@ jobs:
     steps:
       - checkout
       - run:
-        command: |
-          mkdir -p /report/build
-          pdflatex -output-directory /report/build /report/main.tex
-        name: Compile .tex file into .pdf
-        shell: /bin/bash
+          command: |
+            mkdir -p /report/build
+            pdflatex -output-directory /report/build /report/main.tex
+          name: Compile .tex file into .pdf
+          shell: /bin/bash
       - store_artifacts:
-        path: /report/build
+          path: /report/build
 
 
 workflows:
