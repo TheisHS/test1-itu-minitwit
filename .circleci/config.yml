@@ -123,9 +123,6 @@ jobs:
       - checkout
       - run:
           command: |
-            ls
-            mkdir -p /report/build
-            ls
             cd /report
             ls
             pdflatex -output-directory /build <<parameters.file>>
