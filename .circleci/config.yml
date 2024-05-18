@@ -123,8 +123,8 @@ jobs:
       - checkout
       - run:
           command: |
-            cd /report
-            ls
+            mkdir -p report/build
+            cd report
             pdflatex -output-directory /build <<parameters.file>>
           name: Compile .tex file into .pdf
           shell: /bin/bash
