@@ -125,6 +125,7 @@ jobs:
           command: |
             mkdir -p /report/build
             cd /report
+            ls
             pdflatex -output-directory /build <<parameters.file>>
           name: Compile .tex file into .pdf
           shell: /bin/bash
