@@ -3,7 +3,6 @@
 orbs:
   docker: circleci/docker@2.5.0
   shellcheck: circleci/shellcheck@3.1.2
-  latex-orb: woltsu/latex-orb@x.y.z
 version: 2.1
 
 jobs:
