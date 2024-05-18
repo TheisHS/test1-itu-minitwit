@@ -124,7 +124,8 @@ jobs:
       - run:
           command: |
             mkdir -p /report/build
-            pdflatex -output-directory /report/build <<parameters.file>>
+            cd /report
+            pdflatex -output-directory /build <<parameters.file>>
           name: Compile .tex file into .pdf
           shell: /bin/bash
       - store_artifacts:
@@ -165,4 +166,4 @@ workflows:
   compile_latex:
     jobs:
       - compile_latex:
-          file: report/main.tex
+          file: main.tex
