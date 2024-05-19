@@ -109,7 +109,7 @@ jobs:
   
   compile_latex:
     docker:
-      - image: schickling/latex:latest
+      - image: fabestar/pdflatex_simple:latest
         auth:
           username: $DOCKER_USERNAME
           password: $DOCKER_PASSWORD
@@ -131,6 +131,21 @@ jobs:
           shell: /bin/bash
       - store_artifacts:
           path: report/build
+      - run:
+          name: Check repo
+          command: |
+            ls .
+            echo " "
+            ls report
+      - run:
+          name: Commit to GitHub
+          command: |
+            echo "Committing to GitHub"
+            git config user.email "nako@itu.dk"
+            git config user.name "CircleCI Job"
+            git add report/build
+            git commit --allow-empty -am "Automatic commit from CircleCI [skip ci]"
+            git push
   push_to_git:
     docker:
       - image: cimg/base:2022.09
@@ -193,6 +208,3 @@ workflows:
     jobs:
       - compile_latex:
           file: main.tex
-      - push_to_git:
-          requires:
-            - compile_latex
