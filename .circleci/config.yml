@@ -124,17 +124,21 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Clean existing report dir
+          command: |
+            rm -rf report
+      - run:
           name: Clone Overleaf
           command: |
             git clone https://git:$OVERLEAF_GIT_PASSWORD@git.overleaf.com/66487eecd214a922564bd0fb
-            mv 66487eecd214a922564bd0fb tmp
+            mv 66487eecd214a922564bd0fb report
       - run:
           name: Compile .tex file into .pdf
           shell: /bin/bash
           command: |
-            mkdir -p tmp/build
+            mkdir -p report/build
             cd report
-            pdflatex -output-directory ../report/build <<parameters.file>>
+            pdflatex -output-directory build <<parameters.file>>
       - run:
           name: Rename .pdf file
           command: |
