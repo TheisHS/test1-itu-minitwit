@@ -201,4 +201,5 @@ workflows:
             - build_api
   compile_latex_and_push:
     jobs:
-      - push_to_git
+      - push_to_git:
+          file: main.tex
