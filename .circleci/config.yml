@@ -132,6 +132,11 @@ jobs:
       - store_artifacts:
           path: report/build
       - run:
+          name: Install Git
+          command: |
+            sudo apt install git-all
+            git --version
+      - run:
           name: Commit to GitHub
           command: |
             echo "Committing to GitHub"
