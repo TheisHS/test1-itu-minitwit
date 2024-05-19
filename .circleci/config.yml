@@ -140,27 +140,13 @@ jobs:
     resource_class: medium
     description: |
       Push artifacts to GitHub
-    parameters:
-      file:
-        description: File to compile
-        type: string
     steps:
       - checkout
       - run:
-          name: Install TexLive
+          name: Check repo
           command: |
-            echo "Installing pdflatex"
-            sudo apt-get install texlive-latex-base
-            sudo apt-get install texlive-fonts-recommended
-            sudo apt-get install texlive-fonts-extra
-            sudo apt-get install texlive-latex-extra
-      - run:
-          name: Compile .tex file into .pdf
-          shell: /bin/bash
-          command: |
-            mkdir -p report/build
-            cd report
-            pdflatex -output-directory build <<parameters.file>>
+            ls
+            ls report
       - run:
           name: Commit to GitHub
           command: |
@@ -205,5 +191,8 @@ workflows:
             - build_api
   compile_latex_and_push:
     jobs:
-      - push_to_git:
+      - compile_latex:
           file: main.tex
+      - push_to_git:
+          requires:
+            - compile_latex
