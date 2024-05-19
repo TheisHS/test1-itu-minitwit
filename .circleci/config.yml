@@ -3,6 +3,7 @@
 orbs:
   docker: circleci/docker@2.5.0
   shellcheck: circleci/shellcheck@3.1.2
+
 version: 2.1
 
 jobs:
@@ -106,6 +107,55 @@ jobs:
           name: Deploy to server
           command: |
             ssh $SSH_USER@$SSH_HOST -i ~/.ssh/do_ssh_key -o StrictHostKeyChecking=no './deploy.sh'
+  
+  compile_latex:
+    docker:
+      - image: fabestar/pdflatex_simple:latest
+        auth:
+          username: $DOCKER_USERNAME
+          password: $DOCKER_PASSWORD
+    resource_class: large
+    description: |
+      Compile tex file into pdf and output it into artifacts.
+    parameters:
+      file:
+        description: File to compile
+        type: string
+    steps:
+      - checkout
+      - run:
+          name: Clean existing report dir
+          command: |
+            rm -rf report
+      - run:
+          name: Clone Overleaf
+          command: |
+            git clone https://git:$OVERLEAF_GIT_PASSWORD@git.overleaf.com/66487eecd214a922564bd0fb
+            mv 66487eecd214a922564bd0fb report
+      - run:
+          name: Compile .tex file into .pdf
+          shell: /bin/bash
+          command: |
+            mkdir -p report/build
+            cd report
+            pdflatex -output-directory build <<parameters.file>>
+      - run:
+          name: Rename .pdf file
+          command: |
+            mv report/build/main.pdf report/build/report.pdf
+      - store_artifacts:
+          path: report/build
+      - run:
+          name: Commit to GitHub
+          command: |
+            echo "Committing to GitHub"
+            git config user.email "nako@itu.dk"
+            git config user.name "CircleCI Job"
+            git config push.default matching
+            git add report/build/report.pdf
+            git commit --allow-empty -am "Automatic commit from CircleCI [skip ci]"
+            git push
+
 
 workflows:
   lint:
@@ -138,3 +188,11 @@ workflows:
           requires:
             - build_web
             - build_api
+  compile_latex_and_push:
+    jobs:
+      - compile_latex:
+          file: main.tex
+          filters:
+            branches:
+              only:
+                - main
