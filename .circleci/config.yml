@@ -106,6 +106,7 @@ jobs:
           name: Deploy to server
           command: |
             ssh $SSH_USER@$SSH_HOST -i ~/.ssh/do_ssh_key -o StrictHostKeyChecking=no './deploy.sh'
+  
   compile_latex:
     docker:
       - image: schickling/latex:latest
@@ -130,6 +131,20 @@ jobs:
           shell: /bin/bash
       - store_artifacts:
           path: report/build
+      - run:
+          name: Commit to GitHub
+          command: |
+            if [[ -z "${CIRCLE_PULL_REQUEST}"]]
+            then
+              echo "Committing to GitHub"
+              git config user.email "nako@itu.dk"
+              git config user.name "CircleCI Job"
+              git add report/build
+              git commit --allow-empty -am "Automatic commit from CircleCI [skip ci]"
+              git push
+            else
+              echo "Not committing to GitHub"
+            fi
 
 
 workflows:
