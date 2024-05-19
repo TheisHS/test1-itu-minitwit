@@ -188,6 +188,6 @@ workflows:
     jobs:
       - compile_latex:
           file: main.tex
-      - push_to_git
+      - push_to_git:
           requires:
             - compile_latex
