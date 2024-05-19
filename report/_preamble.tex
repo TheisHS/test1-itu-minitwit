@@ -50,8 +50,7 @@
 \newcolumntype{B}{>{\columncolor{mygray}\raggedright}X}
 \newcolumntype{L}{>{\raggedright}X}
 \newcolumntype{C}{>{\centering\arraybackslash}X}
-
-
+    
 % Farver
 \definecolor{mygrey}{rgb}{0.5,0.5,0.5}
 
@@ -60,3 +59,20 @@
 
 \captionsetup{justification=raggedright,singlelinecheck=false,font={color=mygrey,small}}
 
+% Til kodebokse, afhængig af listings package
+\lstset{
+  frame=none,
+  basicstyle=\small\ttfamily,
+  language=Java,
+  aboveskip=3mm,
+  belowskip=-2mm,
+  showstringspaces=false,
+  backgroundcolor=\color{lightergray},
+  numbers=left, 
+  numberstyle=\tiny\color{mygrey},
+  breakatwhitespace=true,
+  framexleftmargin=6pt,
+  framextopmargin=2pt,
+  framexbottommargin=2pt, 
+  frame=tb, framerule=0pt,
+}

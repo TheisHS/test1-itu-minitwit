@@ -20,15 +20,13 @@ Docker, feb 29
 \subsection{System Monitoring and Logging}
 \subsubsection*{Monitoring Strategies and Tools}
 %march 8,12,13 (check lecture notes for reactive vs proactive monitoring and what we have done)
-In managing our system's health, we rely on two key tools: Prometheus and Grafana. Prometheus is a push/pull-hybrid whitebox monitoring system from which our instrumented application pushes our defined metrics, which are then pulled/scraped by the Prometheus central system... (ik færdig/skriv om)\\
+In managing our system's health, we rely on two key tools: Prometheus and Grafana. Prometheus is a push/pull-hybrid whitebox monitoring system from which our instrumented application pushes our defined metrics, which are then pulled/scraped by the Prometheus central system... (ik færdig/skriv om/tilføj flere ligegyldige termer fra monitoring forelæsningen)\\
 
-As from the Monitoring Maturity Model by James Turnbull\cite{MonitoringMaturityModel}, our monitoring strategy combines proactive elements, such as monitoring uptime and tracking error rates metrics to anticipate and prevent issues, with reactive elements, such as tracking specific error codes and status of specific user requests to respond promptly to any issues that arise.
-
-
-
+Grafana is an open-source platform used for visualising and analysing time-series data. In our setup, we use Grafana as a dashboarding tool that uses our Prometheus server as the primary data source for monitoring. This allows us to create dashboards that provide real-time insights of our measures.\\
 %Reactive Monitoring: In reactive monitoring, the focus is on responding to issues after they occur.
 %Proactive Monitoring: Proactive monitoring involves anticipating and preventing issues before they impact the system.
 
+As from the Monitoring Maturity Model by James Turnbull\cite{MonitoringMaturityModel}, our monitoring strategy combines proactive elements, such as monitoring uptime and tracking error rates metrics to anticipate and prevent issues, with reactive elements, such as tracking specific error codes and status of specific user requests to respond promptly to any issues that arise.
 
 \subsubsection*{Key Metrics Monitored}
 We have defined monitoring metrics for both the API and the web client. However, given the API's consistent workload from the simulation, this has been our primary focus. We have defined a total of 14 metrics for the API:
