@@ -140,6 +140,10 @@ jobs:
     resource_class: medium
     description: |
       Push artifacts to GitHub
+    parameters:
+      file:
+        description: File to compile
+        type: string
     steps:
       - checkout
       - run:
