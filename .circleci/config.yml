@@ -143,6 +143,21 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Install TexLive
+          command: |
+            echo "Installing pdflatex"
+            sudo apt-get install texlive-latex-base
+            sudo apt-get install texlive-fonts-recommended
+            sudo apt-get install texlive-fonts-extra
+            sudo apt-get install texlive-latex-extra
+      - run:
+          name: Compile .tex file into .pdf
+          shell: /bin/bash
+          command: |
+            mkdir -p report/build
+            cd report
+            pdflatex -output-directory build <<parameters.file>>
+      - run:
           name: Commit to GitHub
           command: |
             echo "Committing to GitHub"
@@ -186,8 +201,4 @@ workflows:
             - build_api
   compile_latex_and_push:
     jobs:
-      - compile_latex:
-          file: main.tex
-      - push_to_git:
-          requires:
-            - compile_latex
+      - push_to_git
