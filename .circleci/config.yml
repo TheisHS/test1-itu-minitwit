@@ -129,14 +129,12 @@ jobs:
             mkdir -p report/build
             cd report
             pdflatex -output-directory build <<parameters.file>>
+      - run:
+          name: Rename .pdf file
+          command: |
+            mv report/build/main.pdf report/build/report.pdf
       - store_artifacts:
           path: report/build
-      - run:
-          name: Check repo
-          command: |
-            ls .
-            echo " "
-            ls report
       - run:
           name: Commit to GitHub
           command: |
@@ -144,32 +142,7 @@ jobs:
             git config user.email "nako@itu.dk"
             git config user.name "CircleCI Job"
             git config push.default matching
-            git add report/build
-            git commit --allow-empty -am "Automatic commit from CircleCI [skip ci]"
-            git push
-  push_to_git:
-    docker:
-      - image: cimg/base:2022.09
-        auth:
-          username: $DOCKER_USERNAME
-          password: $DOCKER_PASSWORD
-    resource_class: medium
-    description: |
-      Push artifacts to GitHub
-    steps:
-      - checkout
-      - run:
-          name: Check repo
-          command: |
-            ls
-            ls report
-      - run:
-          name: Commit to GitHub
-          command: |
-            echo "Committing to GitHub"
-            git config user.email "nako@itu.dk"
-            git config user.name "CircleCI Job"
-            git add report/build
+            git add report/build/report.pdf
             git commit --allow-empty -am "Automatic commit from CircleCI [skip ci]"
             git push
 
@@ -209,3 +182,7 @@ workflows:
     jobs:
       - compile_latex:
           file: main.tex
+          filters:
+            tags:
+              only:
+                - /^report.*/
