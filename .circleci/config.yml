@@ -123,12 +123,12 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Compile .tex file into .pdf
+          shell: /bin/bash
           command: |
             mkdir -p report/build
             cd report
             pdflatex -output-directory build <<parameters.file>>
-          name: Compile .tex file into .pdf
-          shell: /bin/bash
       - store_artifacts:
           path: report/build
       - run:
@@ -143,6 +143,7 @@ jobs:
             echo "Committing to GitHub"
             git config user.email "nako@itu.dk"
             git config user.name "CircleCI Job"
+            git config push.default matching
             git add report/build
             git commit --allow-empty -am "Automatic commit from CircleCI [skip ci]"
             git push
