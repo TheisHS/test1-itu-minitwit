@@ -134,17 +134,12 @@ jobs:
       - run:
           name: Commit to GitHub
           command: |
-            if [[ -z "${CIRCLE_PULL_REQUEST}"]]
-            then
-              echo "Committing to GitHub"
-              git config user.email "nako@itu.dk"
-              git config user.name "CircleCI Job"
-              git add report/build
-              git commit --allow-empty -am "Automatic commit from CircleCI [skip ci]"
-              git push
-            else
-              echo "Not committing to GitHub"
-            fi
+            echo "Committing to GitHub"
+            git config user.email "nako@itu.dk"
+            git config user.name "CircleCI Job"
+            git add report/build
+            git commit --allow-empty -am "Automatic commit from CircleCI [skip ci]"
+            git push
 
 
 workflows:
