@@ -141,6 +141,7 @@ jobs:
     description: |
       Push artifacts to GitHub
     steps:
+      - checkout
       - run:
           name: Commit to GitHub
           command: |
