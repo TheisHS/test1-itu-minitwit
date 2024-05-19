@@ -131,11 +131,16 @@ jobs:
           shell: /bin/bash
       - store_artifacts:
           path: report/build
-      - run:
-          name: Install Git
-          command: |
-            apt-get -y install git
-            git --version
+  push_to_git:
+    docker:
+      - image: cimg/base:2022.09
+        auth:
+          username: $DOCKER_USERNAME
+          password: $DOCKER_PASSWORD
+    resource_class: medium
+    description: |
+      Push artifacts to GitHub
+    steps:
       - run:
           name: Commit to GitHub
           command: |
@@ -178,7 +183,8 @@ workflows:
           requires:
             - build_web
             - build_api
-  compile_latex:
+  compile_latex_and_push:
     jobs:
       - compile_latex:
           file: main.tex
+      - push_to_git
