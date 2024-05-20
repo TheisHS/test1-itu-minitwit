@@ -36,14 +36,14 @@ As our code is stored on Github, we've eliminated Gitlab CI as as an option. Tra
     \begin{tabularx}{\textwidth}{|L|L|L|}
     \hline
         Github Actions & CircleCI & Our considerations \cr\hline
-        Is free ... "Cheapest for people with public repositories" & 3000 minutes for free pr month & We have a public repo \cr\hline
+        Is free ... "Cheapest for people with public repositories" & 3000 minutes for free pr month & We have a public repo. \cr\hline
         Runs full pipeline automatically & Can be paused and wait for human interaction & We don't have a usecase for needing human intervention before deploying if the code passes all the tests we stup, and the CircleCI feature (even though nice) is not needed. \cr\hline
         More than CI/CD - can also automate manual tasks like generating changelogs or versioning releases & Only CI/CD, but specialised in this. & We only need CI/CD for now. \cr\hline
         Slower than CircleCI & Faster than Github Actions & Do we need speed? \cr\hline
         Only Windows, MacOS and Linux & Every operating system & We only need Linux \cr\hline
         Configuration can be split in mulitple files & Single file configuration & Cleaner setup with GHA? \cr\hline
-        Docker support is still a bit buggy on GHA, works only with Linux. & CircleCI has perfected its Docker support over the years to make it (almost) the de-facto environment for running builds. & We will use docker. \cr\hline
-        More granular control by exposing all commands. Complexity increase. & Less complex, has built in commands for often-used services. Less control & We don't know what we need yet - so maybe more control is nice, but it being easy is also nice. \cr\hline
+        Docker support is still a bit buggy on GHA, works only with Linux. & CircleCI has perfected its Docker support over the years to make it (almost) the de-facto environment for running builds. & We will use Docker, but still only Linux. \cr\hline
+        More granular control by exposing all commands. Complexity increase. & Less complex, has built in commands for often-used services. Less control. & We don't know what we need yet - so maybe more control is nice, but it being easy is also nice. \cr\hline
     \end{tabularx}
     \caption{CI tool strengths.}
 \end{table}
@@ -57,6 +57,12 @@ Here we provide a snapshot of our static code analysis tools from May 19, 2024.
     \includegraphics[width=\linewidth]{images/codeclimate_snapshot_19052020241251.png}
     \caption{Code Climate summary 19/05/2024.}
     \label{fig:codeclimate_snapshot}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{images/codeclimate_trend_snapshot_19052020241251.png}
+    \caption{Code Climate Technical Debt Trends 19/05/2024.}
+    \label{fig:codeclimatetrends_snapshot}
 \end{figure}
 \begin{figure}[H]
     \centering

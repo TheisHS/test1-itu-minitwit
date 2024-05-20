@@ -1,28 +1,75 @@
 \section{Lessons Learned Perspective}
-Describe the biggest issues, how you solved them, and which are major lessons learned with regards to:
-
-evolution and refactoring
-operation, and
-maintenance
-of your ITU-MiniTwit systems. Link back to respective commit messages, issues, tickets, etc. to illustrate these.
-
-Also reflect and describe what was the "DevOps" style of your work. For example, what did you do differently to previous development projects and how did it work?
+%\textcolor{red}{Describe the biggest issues, how you solved them, and which are major lessons learned with regards to: evolution and refactoring operation, and maintenance of your ITU-MiniTwit systems. Link back to respective commit messages, issues, tickets, etc. to illustrate these. Also reflect and describe what was the "DevOps" style of your work. For example, what did you do differently to previous development projects and how did it work?}
 
 
-\subsection{Key Challenges Faced}
-\subsubsection*{Problem-Solving Approaches}
-- Quick to notify each other on Discord, discuss severity and decide course of action. 
-- If one member was more involved with an issue, they would sit together with someone not involved -> both insider knowledge of how it is set up and should work, with a fresh mind seeing it from a different perspective.
+% \subsection{Key Challenges Faced}
 
-\subsubsection*{Lessons Learned from Issue Resolution}
-\subsection{Evolution and Refactoring}
-- Importance of modular solutions open for extension and easy to refactor, we experienced that often setting up something resulted in more issues than solved issues. Some of this is also due to the way the course is structured. First adapt everything to one type of database -> refactor everything to a new database. Same exercise with making the system scalable and going from docker to docker swarm.
-- Prioritisation
-\subsection{Operations and Maintenance}
-- Time consumption: bite the bullet and accept not everything can be done 100\% and if things break there might not be time to fix all of it.
-- Importance of tooling such as monitoring; Easily see if things are working properly at different layers of the system (frontend, api...), logging; Good tool for error debugging, codeclimate; 
+% \subsubsection*{Problem-Solving Approaches}
+% - Quick to notify each other on Discord, discuss severity and decide course of action. 
+% - If one member was more involved with an issue, they would sit together with someone not involved -> both insider knowledge of how it is set up and should work, with a fresh mind seeing it from a different perspective.
+
+
+
+\subsection{Challenges with Evolution and Refactoring}
+
+We experienced that when adding new technologies to our system, other parts of our system stopped working. 
+An example of this, which had a huge impact on our project, was when trying to add Docker Swarm, we stopped receiving logs. 
+When parts of our system failed, we tried getting them to work again by finding guides online that was specifically targeted at making the newly added technology and the existing 'broken` technology work together. 
+This has taught us the importance of modular solutions that are open for extension and are easily refactored. 
+One of the agile principles state that "Working software is the primary measure of progress``, and in line with this, we have truly experienced in this project how broken software halts progress. 
+
+
+% - Importance of modular solutions open for extension and easy to refactor, we experienced that often setting up something resulted in more issues than solved issues. Some of this is also due to the way the course is structured. First adapt everything to one type of database -> refactor everything to a new database. Same exercise with making the system scalable and going from docker to docker swarm.
+% - Prioritisation
+
+
+\subsection{Challenges with Operations}
+
+One challenge that occured due to our choice of CI/CD management tool, was that we were not able to run our automated tests until a pull request was merged to our main branch. 
+Running tests locally was a lengthy process as it required several docker containers being built and started. 
+Therefore, we sometimes approved pull requests with code that would fail our tests. 
+This resulted in situations such as with commit \texttt{7661b99}\footnote{\ \url{https://github.com/TheisHS/test1-itu-minitwit/commit/7661b997afbc0de3742e7df066b37245ef7f18bd}} and \texttt{8071acb}\footnote{\ \url{https://github.com/TheisHS/test1-itu-minitwit/commit/8071acb95fa1010bb102b45b32634bb6b6790e70}}, where a new branch and pull request must be created in order to salvage the main branch.
+A solution to this could have been to set up Github Actions with the same tests as in our CircleCI workflow, but we decided to not do this, as it seemed redundant. 
+However, we have learned that if running tests locally takes too much effort, it will not be done, which is the reason why automated tests are so important. 
+And while pushing code to main that does not pass the tests can seem bad, we found that it is not as dangerous as it sounds, due to another lesson we learned in this project: the power of a fault tolerant CI/CD pipeline. 
+Having the code on Github decoupled from the code running on our virtual machines, has made it safe to push code that we believed should be on our main branch. 
+It has reduced our fear of pushing code, which ultimately has allowed us to continuously deliver and deploy, which again is in line with the agile principles\footnote{\ "Deliver working software frequently, from a couple of weeks to a couple of months, with a preference to the shorter timescale``.}.
+
+
+
+\subsection{Challenges with Maintenance}
+% - Time consumption: bite the bullet and accept not everything can be done 100\% and if things break there might not be time to fix all of it.
+% - Importance of tooling such as monitoring; Easily see if things are working properly at different layers of the system (frontend, api...), logging; Good tool for error debugging, codeclimate; 
+
+In this project, we have especially learned the importance of tooling such as monitoring and logging. 
+In the beginning, monitoring was limited to the official status-page\footnote{\ \url{http://206.81.24.116/status.html}}, where it was easy to see if \textit{something} was wrong, but not what it was. 
+We were able to see that we got almost no errors beside a bunch on our \texttt{/fllws} endpoint, which made us wonder whether we had implemented it wrong.
+This is were logging becomes a powerful tool, but unfortunately, we have had problems with this continuously through our project. 
+At first, we spent a long time on a stack that we could not get to work. 
+After switching to a Promtail/Loki/Grafana stack, we could finally see that the implementation seemed to be right but that there were a lot of users that were not able to be found. 
+However, we quickly lost our logs again, when we started to work with Docker Swarm, as mentioned earlier, and again it left us completely blind to the cause of the errors we experienced. 
+We have learned that while monitoring is an important tool to give you an overview of whether the system is up and running, it  is of no help when the system is not up and running. 
+Ensuring the ease of discovering bugs in your system is essential in making sure it is operational. 
+In the end, it meant that one of our Github issues\footnote{\ \url{https://github.com/TheisHS/test1-itu-minitwit/issues/41}}, which was identified early in our process, was never solved and closed.
+
+\subsubsection*{Switching to https}
+Toward the end of the simulation we experienced occasional system shutdowns as mentioned in a previous section. 
+While making the system scalable we also obtained a https certificate. 
+After getting our endpoint updated in the simulator, we experienced that we got no more requests. 
+As this was nearing the end of the project, we wrongly assumed that there was not being sent anymore requests. 
+We talked to another group, who were still receiving messages, so we assumed something was wrong with our new endpoints. 
+We tested creating users on the webserver and writing messages, and we tested posting messages with Postman to our API, both working as intended.
+We therefore have an assumption that something might have gone wrong when updating our endpoints in the simulator, and that this might be the reason why we on the simulator have accumulated several million errors in the final weeks.
+
 
 \subsection{Reflection on DevOps Practices}
-Log: feb9 (git branch setup, later march2 argue if static analysis removes need for manual reviews), feb25 (CI/CD, using pipelines in your project),
+%Also reflect and describe what was the "DevOps" style of your work. For example, what did you do differently to previous development projects and how did it work?
 
-Transparency and communication are big parts of DevOps and during the later weeks of the project most new changes were made by ssh'ing into the virtual machine and making configuration changes meaning that there was no version control or no easy way to inspect the code.
+Log: feb9 (git branch setup, later march2 argue if static analysis removes need for manual reviews), feb25 (CI/CD, using pipelines in your projectm (discuss including security scan to workflow)), automating provisioning (docker, vangrant..),  instrumenting, scaling cloud environment + loadbalancing, 
+
+
+
+One part of our practices that does not adhere to the DevOps methodology is the configuration of our virtual machines. 
+Configuration files were only stored inside the virtual machines, meaning that if we had to make any changes, we had to ssh into the machine. 
+By not having configuration as part of our automated deployment pipeline, we created a DevOps anti-pattern which lead to an erosion of our automated cloud provisioning throuwhere we had no version control of the configuration and no easy way to inspect the code. 
+Ultimately, it lead to more time spent on fixing human errors and on configuring new virtual machines.
