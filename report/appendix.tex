@@ -3,6 +3,32 @@
 
 \subsection{Choice of programming language}
 \label{app:programming_language_choice}
+\begin{table}[H]
+    \centering
+    \footnotesize 
+    \begin{tabularx}{\textwidth}{|L|L|}
+    \hline
+    \textbf{Feature Category} & \textbf{Description} \cr \hline
+    Database Operations & Connect to the database \cr \cline{2-2}
+                         & Create the database tables \cr \cline{2-2}
+                         & Query the database \cr \cline{2-2}
+                         & Get the user id \cr \cline{2-2}
+                         & Format a timestamp for display \cr \cline{2-2}
+                         & Get a gravatar image for an email \cr \hline
+    Request Handling    & Before a request, it connects to the DB and gets the user, and after a request it closes the connection to the DB. \cr \hline
+    UI                  & A page showing the public timeline, including all public messages. \cr \cline{2-2}
+                         & A page showing the timeline for the logged-in user. If no user is logged in, redirect to the public timeline. The private timeline includes all public messages, and the messages from the people the logged-in user follows. \cr \cline{2-2}
+                         & A page for user profiles. If the user is followed, display a different message ("You follow this user"/"You don't follow ...") \cr \hline
+    Routes              & A route to follow other users \cr \cline{2-2}
+                         & A route to unfollow other users \cr \cline{2-2}
+                         & A route for adding messages \cr \cline{2-2}
+                         & A route to register \cr \cline{2-2}
+                         & A route to login \cr \cline{2-2}
+                         & A route to logout \cr \hline
+    \end{tabularx}
+    \caption{Feature mapping of ITU Minitwit}
+    \label{tab:feature_mapping}
+\end{table}
 
 \begin{table}[H]
     \centering
@@ -25,6 +51,35 @@
 * Middleware in web APIs is used as a design pattern to intercept and manipulate HTTP requests.
 \url{https://azure.microsoft.com/en-us/resources/cloud-computing-dictionary/what-is-middleware}
 
+\newpage
+\subsection{List of Technologies and Tools}
+\label{app:technologies_and_tools}
+
+\begin{multicols}{2}
+    \begin{itemize}
+        \item \textbf{Go}: A statically typed, compiled programming often used for backend development.
+        \item \textbf{Go/Gorilla}: A toolkit for Golang, that provides packages for building web applications. Used for routing and session management.
+        \item \textbf{SQLite}: A lightweight SQL database engine that is ideal for embedded database applications. Used in initial setup and for testing.
+        \item \textbf{Docker}: A platform for shipping and running applications, ensuring consistency across different environments. Containerization is used deliberately throughout our system and in delivery.
+        \item \textbf{Docker Swarm}: A container orchestration tool, included in Docker by default, to manage a cluster of Docker nodes as a single virtual system.
+        \item \textbf{DigitalOcean}: A cloud infrastructure provider offering scalable compute and storage solutions. Used for deploying and managing the application and database.
+        \item \textbf{Prometheus}: An open-source monitoring toolkit used for monitoring metrics in our cloud environments.
+        \item \textbf{Grafana}: An open-source analytics and monitoring platform that integrates various data sources to visualize our data and metrics.
+        \item \textbf{PostgreSQL}: A open-source object-relational database system, known for extensibility and speed. Used after the transition from SQLite managed by DigitalOcean.
+        \item \textbf{Promtail}: An agent that ships log file to Loki and part of the Grafana logging stack. Used for gathering logs.
+        \item \textbf{Loki}: A log aggregation system designed to be scalable. Used with Grafana for log querying and visualization.
+        \item \textbf{Nginx}: A high-performance web server and reverse proxy server. Used for load balancing.
+        \item \textbf{CertBot}: A open-source tool for automatically using Let's Encrypt certificates to enable HTTPS on web servers.
+        %\item \textbf{Terraform}: An infrastrcucture as code tool that allows users to define and provision data center infrastructure using a high-level configuration language.
+        \item \textbf{CircleCI}: A continuous integration and delivery platform that automates the build, test and deployment processes of our project. 
+        \item \textbf{CodeClimate}: A platform that provides code review, offering insights into code quality, maintainability and test coverage, helping us ensure high standards and to improve code health.
+        \item \textbf{Github}: Version Control Management
+        \item \textbf{Hadolint}: A lint-tool that analyzes Dockerfiles to find common issues.
+        \item \textbf{Shellcheck}: A shell script analysis tool that identifies syntax errors and common issues.
+        \item \textbf{Sonarcloud}: A cloud-based code quality and security service that analyzes code to detect bugs and vulnerabilities.
+        \item \textbf{Vagrant}: A tool for building and managing virtualized development environments. Used initially for VM instantiating.
+    \end{itemize}
+\end{multicols}
 
 \newpage
 \subsection{Choice of CI tool}
@@ -42,7 +97,7 @@ As our code is stored on Github, we've eliminated Gitlab CI as as an option. Tra
         Slower than CircleCI & Faster than Github Actions & Do we need speed? \cr\hline
         Only Windows, MacOS and Linux & Every operating system & We only need Linux \cr\hline
         Configuration can be split in mulitple files & Single file configuration & Cleaner setup with GHA? \cr\hline
-        Docker support is still a bit buggy on GHA, works only with Linux. & CircleCI has perfected its Docker support over the years to make it (almost) the de-facto environment for running builds. & We will use Docker, but still only Linux. \cr\hline
+        Docker support is still a bit buggy on GHA, and works only with Linux. & CircleCI has perfected its Docker support over the years to make it (almost) the de-facto environment for running builds. & We will use Docker, but still only Linux. \cr\hline
         More granular control by exposing all commands. Complexity increase. & Less complex, has built in commands for often-used services. Less control. & We don't know what we need yet - so maybe more control is nice, but it being easy is also nice. \cr\hline
     \end{tabularx}
     \caption{CI tool strengths.}

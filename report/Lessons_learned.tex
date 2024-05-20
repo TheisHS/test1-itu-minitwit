@@ -13,7 +13,7 @@
 \subsection{Challenges with Evolution and Refactoring}
 
 We experienced that when adding new technologies to our system, other parts of our system stopped working. 
-An example of this, which had a huge impact on our project, was when trying to add Docker Swarm, we stopped receiving logs. 
+%  An example of this, which had a huge impact on our project, was when trying to add Docker Swarm, we stopped receiving logs. 
 When parts of our system failed, we tried getting them to work again by finding guides online that was specifically targeted at making the newly added technology and the existing 'broken` technology work together. 
 This has taught us the importance of modular solutions that are open for extension and are easily refactored. 
 One of the agile principles state that "Working software is the primary measure of progress``, and in line with this, we have truly experienced in this project how broken software halts progress. 
@@ -24,52 +24,49 @@ One of the agile principles state that "Working software is the primary measure 
 
 
 \subsection{Challenges with Operations}
+A challenge with our CI/CD management tool was the inability to run our automated tests until a pull request was merged to our main branch.
 
-One challenge that occured due to our choice of CI/CD management tool, was that we were not able to run our automated tests until a pull request was merged to our main branch. 
-Running tests locally was a lengthy process as it required several docker containers being built and started. 
-Therefore, we sometimes approved pull requests with code that would fail our tests. 
-This resulted in situations such as with commit \texttt{7661b99}\footnote{\ \url{https://github.com/TheisHS/test1-itu-minitwit/commit/7661b997afbc0de3742e7df066b37245ef7f18bd}} and \texttt{8071acb}\footnote{\ \url{https://github.com/TheisHS/test1-itu-minitwit/commit/8071acb95fa1010bb102b45b32634bb6b6790e70}}, where a new branch and pull request must be created in order to salvage the main branch.
-A solution to this could have been to set up Github Actions with the same tests as in our CircleCI workflow, but we decided to not do this, as it seemed redundant. 
-However, we have learned that if running tests locally takes too much effort, it will not be done, which is the reason why automated tests are so important. 
-And while pushing code to main that does not pass the tests can seem bad, we found that it is not as dangerous as it sounds, due to another lesson we learned in this project: the power of a fault tolerant CI/CD pipeline. 
-Having the code on Github decoupled from the code running on our virtual machines, has made it safe to push code that we believed should be on our main branch. 
-It has reduced our fear of pushing code, which ultimately has allowed us to continuously deliver and deploy, which again is in line with the agile principles\footnote{\ "Deliver working software frequently, from a couple of weeks to a couple of months, with a preference to the shorter timescale``.}.
+Running tests locally was a lengthy process as it required several docker containers being built and started. As a result, we sometimes approved pull requests with failing code. 
+This resulted in situations such as commit \texttt{7661b99}\footnote{\ \url{https://github.com/TheisHS/test1-itu-minitwit/commit/7661b997afbc0de3742e7df066b37245ef7f18bd}} and \texttt{8071acb}\footnote{\ \url{https://github.com/TheisHS/test1-itu-minitwit/commit/8071acb95fa1010bb102b45b32634bb6b6790e70}}, requiring a new branch and pull request to salvage the main branch.
+To solve this, we considered setting up Github Actions with the same tests as in our CircleCI workflow, but we decided it was redundant.
+However, we have learned that if running tests locally is too difficult, it will not be done, highlighting the importance of automated tests.\\ 
+Moreover, we found that pushing failing code to main is not as dangerous as it sounds, highlighting the importance of a fault tolerant CI/CD pipeline. Also, having the code on Github decoupled from the code on our VMs makes it safe to push code to our main branch. Ultimately this has allowed us to continuously deliver and deploy, which again is in line with the agile principles\footnote{\ "Deliver working software frequently, from a couple of weeks to a couple of months, with a preference to the shorter timescale``.}.
+
 
 
 
 \subsection{Challenges with Maintenance}
+\label{sec:maintenance}
 % - Time consumption: bite the bullet and accept not everything can be done 100\% and if things break there might not be time to fix all of it.
 % - Importance of tooling such as monitoring; Easily see if things are working properly at different layers of the system (frontend, api...), logging; Good tool for error debugging, codeclimate; 
 
-In this project, we have especially learned the importance of tooling such as monitoring and logging. 
-In the beginning, monitoring was limited to the official status-page\footnote{\ \url{http://206.81.24.116/status.html}}, where it was easy to see if \textit{something} was wrong, but not what it was. 
-We were able to see that we got almost no errors beside a bunch on our \texttt{/fllws} endpoint, which made us wonder whether we had implemented it wrong.
-This is were logging becomes a powerful tool, but unfortunately, we have had problems with this continuously through our project. 
-At first, we spent a long time on a stack that we could not get to work. 
-After switching to a Promtail/Loki/Grafana stack, we could finally see that the implementation seemed to be right but that there were a lot of users that were not able to be found. 
-However, we quickly lost our logs again, when we started to work with Docker Swarm, as mentioned earlier, and again it left us completely blind to the cause of the errors we experienced. 
-We have learned that while monitoring is an important tool to give you an overview of whether the system is up and running, it  is of no help when the system is not up and running. 
-Ensuring the ease of discovering bugs in your system is essential in making sure it is operational. 
+%\subsubsection*{Monitoring and logging}
+Early in this project, monitoring was limited to the official status-page\footnote{\ \url{http://206.81.24.116/status.html}}, where it was easy to see if \textit{something} was wrong, but not what it was. 
+This is where logging becomes a powerful tool.
+We started using a stack consisting of Promtail, Loki and Grafana, this allowed us to see that there were a lot of usernames that were not able to be found. 
+However, when we started to work with Docker Swarm, our stack failed, and again it left us completely blind to the cause of the errors we experienced. 
+%This taught us, that monitoring is an important tool to give you an overview of the system is up and running. 
 In the end, it meant that one of our Github issues\footnote{\ \url{https://github.com/TheisHS/test1-itu-minitwit/issues/41}}, which was identified early in our process, was never solved and closed.
 
-\subsubsection*{Switching to https}
-Toward the end of the simulation we experienced occasional system shutdowns as mentioned in a previous section. 
-While making the system scalable we also obtained a https certificate. 
-After getting our endpoint updated in the simulator, we experienced that we got no more requests. 
-As this was nearing the end of the project, we wrongly assumed that there was not being sent anymore requests. 
-We talked to another group, who were still receiving messages, so we assumed something was wrong with our new endpoints. 
-We tested creating users on the webserver and writing messages, and we tested posting messages with Postman to our API, both working as intended.
-We therefore have an assumption that something might have gone wrong when updating our endpoints in the simulator, and that this might be the reason why we on the simulator have accumulated several million errors in the final weeks.
 
-
-\subsection{Reflection on DevOps Practices}
+\subsection{Other Reflections on DevOps Practices}
 %Also reflect and describe what was the "DevOps" style of your work. For example, what did you do differently to previous development projects and how did it work?
 
-Log: feb9 (git branch setup, later march2 argue if static analysis removes need for manual reviews), feb25 (CI/CD, using pipelines in your projectm (discuss including security scan to workflow)), automating provisioning (docker, vangrant..),  instrumenting, scaling cloud environment + loadbalancing, 
+%Log: feb9 (git branch setup, later march2 argue if static analysis removes need for manual reviews), feb25 (CI/CD, using pipelines in your projectm (discuss including security scan to workflow)), automating provisioning (docker, vangrant..),  instrumenting, scaling cloud environment + loadbalancing, 
 
 
+% One aspect of our practices that does not align with the DevOps methodology is the configuration of our virtual machines. 
+% While Vagrant was used to automate the provisioning of our initial single-node cloud infrastructure, we did not include any further virtual machine configuration in our automated deployment. 
+% As a result, we lacked version control and an overview of the virtual machine's state after its initial setup. 
+We created a DevOps anti-pattern where all changes to the virtual machine were made manually via SSH, without version control and traceability when making configuration changes later in the project. 
+This led to an erosion of our automated cloud provisioning, deviating more and more from our initial setup, making it increasingly difficult and time-consuming to maintain. Initially we had used Vagrant to provision our single-node cloud infrastructure, but did not maintain it throughout the project.
+Ultimately, this led to more time spent on fixing human errors and configuring new virtual machines. 
+Additionally, if the infrastructure were to crash, it would take days to reproduce the current state of the service.
+%vi skriver ikke noget om TerraForm, vi er bare ærlige til eksamen og siger at vi først satte det op efterfølgende
 
-One part of our practices that does not adhere to the DevOps methodology is the configuration of our virtual machines. 
-Configuration files were only stored inside the virtual machines, meaning that if we had to make any changes, we had to ssh into the machine. 
-By not having configuration as part of our automated deployment pipeline, we created a DevOps anti-pattern which lead to an erosion of our automated cloud provisioning throuwhere we had no version control of the configuration and no easy way to inspect the code. 
-Ultimately, it lead to more time spent on fixing human errors and on configuring new virtual machines.
+Besides including further virtual machine configuration to our automated deployment, it would have been beneficial to include a security aspect to our pipeline, namely snyk and wmap to provide reactive identification of vulnerabilities. 
+% Specifically, adding both the \textit{snyk} and \textit{wmap} scanning, also used for our security assessment, would provide a reactive identification of vulnerabilities before each deployment.
+
+%Var der noget godt ved devops practices.. herunder;
+
+%Git repo setup... branch protection.. must satisfy some level of linting
