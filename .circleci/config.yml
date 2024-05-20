@@ -138,7 +138,10 @@ jobs:
           command: |
             mkdir -p report/build
             cd report
-            pdflatex -output-directory build <<parameters.file>>
+            pdflatex <<parameters.file>>.tex
+            bibtex <<parameters.file>>.aux
+            pdflatex <<parameters.file>>.tex
+            pdflatex -output-directory build <<parameters.file>>.tex
       - run:
           name: Rename .pdf file
           command: |
@@ -191,8 +194,4 @@ workflows:
   compile_latex_and_push:
     jobs:
       - compile_latex:
-          file: main.tex
-          filters:
-            branches:
-              only:
-                - main
+          file: main
