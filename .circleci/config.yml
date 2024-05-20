@@ -138,13 +138,9 @@ jobs:
           command: |
             mkdir -p report/build
             cd report
-            echo "First run of pdflatex"
             pdflatex <<parameters.file>>.tex
-            echo "Run bibtex and pdflatex again to get references right"
             bibtex <<parameters.file>>.aux
-            echo "Run pdflatex again to get references right"
             pdflatex <<parameters.file>>.tex
-            echo "Run pdflatex again to get references right"
             pdflatex -output-directory build <<parameters.file>>.tex
       - run:
           name: Rename .pdf file
@@ -199,3 +195,7 @@ workflows:
     jobs:
       - compile_latex:
           file: main
+          filters:
+            branches:
+              only:
+                - main
