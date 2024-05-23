@@ -28,22 +28,21 @@ A challenge with our CI/CD management tool was the inability to run our automate
 
 Running tests locally was a lengthy process as it required several docker containers being built and started. As a result, we sometimes approved pull requests with failing code. 
 This resulted in situations such as commit \texttt{7661b99}\footnote{\ \url{https://github.com/TheisHS/test1-itu-minitwit/commit/7661b997afbc0de3742e7df066b37245ef7f18bd}} and \texttt{8071acb}\footnote{\ \url{https://github.com/TheisHS/test1-itu-minitwit/commit/8071acb95fa1010bb102b45b32634bb6b6790e70}}, requiring a new branch and pull request to salvage the main branch.
-To solve this, we considered setting up Github Actions with the same tests as in our CircleCI workflow, but we decided it was redundant.
+To solve this, we considered setting up Github Actions with the same tests as in our CircleCI workflow, but decided it was redundant.
 However, we have learned that if running tests locally is too difficult, it will not be done, highlighting the importance of automated tests.\\ 
-Moreover, we found that pushing failing code to main is not as dangerous as it sounds, highlighting the importance of a fault tolerant CI/CD pipeline. Also, having the code on Github decoupled from the code on our VMs makes it safe to push code to our main branch. Ultimately this has allowed us to continuously deliver and deploy, which again is in line with the agile principles\footnote{\ "Deliver working software frequently, from a couple of weeks to a couple of months, with a preference to the shorter timescale``.}.
+Moreover, we found that pushing failing code to main is not as dangerous as it sounds, highlighting the importance of a fault tolerant CI/CD pipeline. 
+Additionally, having the code on Github decoupled from the code on our VMs makes it safe to push code to our main branch. Ultimately this has allowed us to continuously deliver and deploy, which again is in line with the agile principles\footnote{\ "Deliver working software frequently, from a couple of weeks to a couple of months, with a preference to the shorter timescale``.}.
 
 
 
 
 \subsection{Challenges with Maintenance}
 \label{sec:maintenance}
-% - Time consumption: bite the bullet and accept not everything can be done 100\% and if things break there might not be time to fix all of it.
-% - Importance of tooling such as monitoring; Easily see if things are working properly at different layers of the system (frontend, api...), logging; Good tool for error debugging, codeclimate; 
 
 %\subsubsection*{Monitoring and logging}
-Early in this project, monitoring was limited to the official status-page\footnote{\ \url{http://206.81.24.116/status.html}}, where it was easy to see if \textit{something} was wrong, but not what it was. 
+Early in the project, monitoring was limited to the official status-page\footnote{\ \url{http://206.81.24.116/status.html}}, where it was easy to see if \textit{something} was wrong, but not what it was. 
 This is where logging becomes a powerful tool.
-We started using a stack consisting of Promtail, Loki and Grafana, this allowed us to see that there were a lot of usernames that were not able to be found. 
+Our logging stack consisting of Promtail, Loki and Grafana allowed us to see that there were a lot of usernames that were not able to be found. 
 However, when we started to work with Docker Swarm, our stack failed, and again it left us completely blind to the cause of the errors we experienced. 
 %This taught us, that monitoring is an important tool to give you an overview of the system is up and running. 
 In the end, it meant that one of our Github issues\footnote{\ \url{https://github.com/TheisHS/test1-itu-minitwit/issues/41}}, which was identified early in our process, was never solved and closed.

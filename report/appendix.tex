@@ -6,7 +6,7 @@
 \begin{table}[H]
     \centering
     \footnotesize 
-    \begin{tabularx}{\textwidth}{|L|L|}
+    \begin{tabularx}{\textwidth}{|N|L|}
     \hline
     \textbf{Feature Category} & \textbf{Description} \cr \hline
     Database Operations & Connect to the database \cr \cline{2-2}
@@ -40,9 +40,11 @@
         Types & Dynamically typed & Statically typed & Dynamically typed & Statically typed \cr\hline
         Performance & Moderate performance & High performance & Moderate performance & High performance \cr\hline
         SQLite support & yes & yes & yes & yes \cr\hline
-        Middleware support* & yes & yes & yes & yes \cr\hline
+        Middleware support$^*$ & yes & yes & yes & yes \cr\hline
         Release date & 2010 & 2016 & 2007 & 2011 \cr\hline
         Deployment & Deployed using virtual environments to manage dependencies. & Compiled into a single binary executable with all its dependencies. & Requires the presence of the Ruby runtime environment and dependencies. & Can be deployed as single binary executables. \cr\hline
+        Documentation & - & Insufficient & - & Comprehensive \cr\hline
+        Operation System & Windows and Unix based & Unix based, but Windows is "preview"$^{**}$ & Windows and Unix based & Windows and Unix based \cr\hline
     \end{tabularx}
     \caption{Programming language strengths}
     \label{tab:programming_language_choice}
@@ -50,6 +52,8 @@
 
 * Middleware in web APIs is used as a design pattern to intercept and manipulate HTTP requests.
 \url{https://azure.microsoft.com/en-us/resources/cloud-computing-dictionary/what-is-middleware}
+
+** \url{https://github.com/crystal-lang/crystal/issues/5430}
 
 \newpage
 \subsection{List of Technologies and Tools}

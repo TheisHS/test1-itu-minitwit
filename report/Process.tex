@@ -37,8 +37,8 @@ Releases have been done manually on Github once every Thursday evening.
     \label{fig:build_and_deploy}
 \end{figure}
 
-The decision to manage our CI/CD pipeline on CircleCI is based on the pros and cons in appendix \ref{app:ci_tool_choice}. 
-Github Actions would also have been a good choice for this, but as there were no obvious downsides to either or, we went with the technology that we had not work with before as to gain experience with it.
+The decision to manage our CI/CD pipeline on CircleCI is based on the tool comparisons in appendix \ref{app:ci_tool_choice}. 
+Github Actions would also have been a good choice for this, but as there were no obvious downsides to either, we went for the technology that we had not worked with before to gain experience with it.
 
 
 
@@ -67,7 +67,13 @@ Github Actions would also have been a good choice for this, but as there were no
 %\subsubsection*{Monitoring Strategies and Tools}
 
 %march 8,12,13 (check lecture notes for reactive vs proactive monitoring and what we have done)
-In managing our system's health, we rely on two key tools: Prometheus and Grafana. Prometheus is a pull-based monitoring system that scrapes our defined metrics. We instrument the system with the Prometheus \textit{client\_golang} library, from which we create the metrics, register each metric using Prometheus' default register, finally creating HTTP endpoints exposing the metrics for Prometheus to scrape \cite{prometheusGolang}. Our approach is mainly whitebox monitoring in application-based metrics tracking the internal workings of the system. However, we do use a few blackbox monitoring elements by tracking specific endpoint responses. We use Grafana as a dashboarding tool that uses our Prometheus server as the data source to provide real-time insights of our measures.
+In managing our system's health, we rely on two key tools: Prometheus and Grafana. 
+% Prometheus is a pull-based monitoring system that scrapes our defined metrics. 
+We instrument the system with the Prometheus \textit{client\_golang} library, from which we create the metrics that we monitor, register each metric using the default register of Prometheus, finally creating HTTP endpoints exposing the metrics for Prometheus to scrape \cite{prometheusGolang}. 
+Our approach is mainly whitebox monitoring in application-based metrics tracking the internal parts of the system. 
+However, we do use a few blackbox monitoring elements by tracking specific endpoint responses. 
+
+We use Grafana as a visualisation tool that uses our Prometheus server as the data source to provide real-time insights of our measures.
 %blackbox is from outside the application, a user's perspective where can track correct responses for specific requests.
 %Reactive Monitoring: In reactive monitoring, the focus is on responding to issues after they occur.
 %Proactive Monitoring: Proactive monitoring involves anticipating and preventing issues before they impact the system.
@@ -98,20 +104,22 @@ We have defined monitoring metrics for both the API and the web client. However,
 \end{itemize}
 \end{multicols}
 
-These monitoring metrics are visualised in a Grafana dashboard named \texttt{Minitwit\_Dashboard} as shown in Figure \ref{fig:monitor_good}. 
+These monitoring metrics are used to create the Grafana dashboard in Figure \ref{fig:monitor_good}. 
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{images/monitor_good.png}
-    \caption{Minitwit\_Dashboard - API Monitoring}
+    \includegraphics[width=0.9\textwidth]{images/monitor_good.png}
+    \caption{Minitwit\_Dashboard -- API Monitoring.}
     \label{fig:monitor_good}
 \end{figure}
 
-The key metrics are categorised and displayed as follows:
+The dashboard includes (1) widgets for showing the uptime percentage of different parts of our system, (2) several widgets for showing the total amount of errors and error rate and (3) the distribution of successes and failures on specific user requests.
 
-\textbf{Total HTTP requests and Database accesses}, \textbf{Total Errors and Error Ratio}, \textbf{Error code distribution} of the total errors, and \textbf{Specific user request success/failure} (follow, unfollow, tweet). 
+% The key metrics are categorised and displayed as follows:
 
-Additionally, the visualisation shows the uptime percentage of the API, Web Client, and Prometheus, which is derived from predefined Prometheus metrics.
+% \textbf{Total HTTP requests and Database accesses}, \textbf{Total Errors and Error Ratio}, \textbf{Error code distribution} of the total errors, and \textbf{Specific user request success/failure} (follow, unfollow, tweet). 
+
+% Additionally, the visualisation shows the uptime percentage of the API server, web client, and Prometheus, which is derived from predefined Prometheus metrics.
 
 
 
@@ -130,30 +138,31 @@ The decision to not go for the otherwise popular ELK stack, is partly based on t
     \label{fig:logging}
 \end{figure}
 
-Our strategy for logging was to include the time of the event, which function was called and the parameters it was called with. 
-When errors occur, we logged what the error is, and again which parameters were used, in order for us to more easily decode what the error might have been.
+Our strategy for logging was to use the \textit{information} level to log the beginning of every function call and when alterations to the database were successfully made, and to use the \textit{error} level to log when errors occured.
+
+% Our strategy for logging was to include the time of the event, which function was called and the parameters it was called with. 
+% When errors occur, we logged what the error is, and again which parameters were used, in order for us to more easily decode what the error might have been.
 % Our techniques included logging general activities of the system with the purpose gaining of an insight into how the system was being used although this was not super useful in our context, but could have proven pivotal as an auditing mechanism if we had experienced database specific issues. 
 % This happened on one of our log levels, namely INFO. 
 % We also had a level for errors and logged all errors in our system.
-As we had a suspicious amount of "User not found" errors on our \texttt{/fllws} endpoint, we created a widget on our dashboard that showed all unique usernames that were not found in the database. This enabled us to check whether these users actually did not exist.
+As we had a high amount of "User not found" errors on our \texttt{/fllws} endpoint, we created a widget on our dashboard that showed all unique usernames that were not found in the database. 
+This enabled us to check whether these users actually did not exist.
 The setup of our dashboard can be seen in figure \ref{fig:logging}.
 
 
 \subsection{Security Assessment}
-In our efforts to ensure the security of the ITU-MiniTwit system, we have utilized Snyk, Metasploit and SonarCloud, however, these tools have not identified any immediate vulnerabilities. To assess the security state of our system we have identified potential threats and performed a risk analysis.
+In our efforts to ensure the security of the ITU-MiniTwit system, we have utilised Snyk, Metasploit and SonarCloud, however, these tools have not identified any immediate vulnerabilities. To further assess the security state of our system we have identified potential threats and performed a risk analysis.
 
 \subsubsection*{Risk Identification}
-Our primary asset is the ITU-MiniTwit web application, which includes frontend, backend, and database components.
-
+Our primary asset is the ITU-MiniTwit web application, which includes web client, API server, and a database.
 One of the most common vulnerabilities for web applications involves injecting malicious SQL statements. Other threats consists of cross-site scripting (XSS) or misconfiguration, e.g. incorrectly configured servers, databases or applications.
-
 From this we can construct several risk scenarios:
 
 \begin{multicols}{2}
     \begin{itemize}
         \item \textbf{Scenario 1}: An attacker performs SQL injection on the web application to download sensitive user data.
         \item \textbf{Scenario 2}: An attacker exploits a cross-site scripting vulnerability to steal session cookies and impersonate users.
-        \item \textbf{Scenario 3}: An attacker exploits a misconfiguration of the web server allowing unauthorized access to system resources.
+        \item \textbf{Scenario 3}: An attacker exploits a misconfiguration of the web client allowing unauthorised access to system resources.
         \item \textbf{Scenario 4}: A developer with legitimate access exposes sensitive data or sabotages the system, either intentionally or accidentally.
     \end{itemize} 
 \end{multicols}
@@ -161,7 +170,7 @@ From this we can construct several risk scenarios:
 %"https://documents.ncsl.org/wwwncsl/Task-Forces/Cybersecurity-Privacy/IBM_Ponemon2017CostofDataBreachStudy.pdf" ved vi at "however we know from (kilde) that the the most common way to discover security failures is when a security incident happens.
 
 \subsubsection*{Risk Analysis}
-To analyze the identified risks we construct a risk matrix, see table \ref{tab:risk_matrix}.
+To analyze the identified risks we constructed the risk matrix in table \ref{tab:risk_matrix}.
 
 \begin{table} [H]
     \centering
@@ -179,7 +188,7 @@ To analyze the identified risks we construct a risk matrix, see table \ref{tab:r
 
 To mitigate the risk scenarios the following strategies are employed:
 \begin{itemize}
-    \item \textbf{Static code analysis}: The likelihood of our risk scenarios is covered in part by SonarCloud that has security rules setup, which analyzes the source code and allows detecting SQL Injection and XSS. %https://docs.sonarsource.com/sonarcloud/digging-deeper/security-related-rules/
+    \item \textbf{Static code analysis}: The likelihood of our risk scenarios is covered in part by SonarCloud that has security rules setup, which analyses the source code and allows detecting SQL Injection and XSS. %https://docs.sonarsource.com/sonarcloud/digging-deeper/security-related-rules/
     \item \textbf{Secrets}: To minimize the risk of exposing sensitive data, we use secrets in Docker swarm, GitHub and CircleCI. 
     \item \textbf{Automation}: Automatic configuration e.g. using tools like Vagrant ensures we avoid misconfigurations.
 \end{itemize}
@@ -188,7 +197,9 @@ To mitigate the risk scenarios the following strategies are employed:
 %HTTPS
 %Docker secrets
 
-For further security hardening we employ the HTTPS protocol. Our HTTPS certificate was obtained through CertBot. However, due to difficulties with the standard HTTP validation method, especially concerning load balancers as described in the article "How To Acquire a Let's Encrypt Certificate Using DNS Validation with acme-dns-certbot," \cite{certbotDigitalOceanIssues} we opted for an alternative approach. We used the acme-dns-certbot tool \cite{acmedns}, which interfaces CertBot with a third-party DNS server for validation instead of HTTP. This method is especially beneficial for issuing certificates for individual servers behind a load balancer, where traditional HTTP certificate validation would require setting validation files on each server.
+For further security hardening we employ the HTTPS protocol. Our HTTPS certificate was obtained through CertBot. However, due to difficulties with the standard HTTP validation method, especially concerning load balancers as described in 
+%the article "How To Acquire a Let's Encrypt Certificate Using DNS Validation with acme-dns-certbot," 
+\cite{certbotDigitalOceanIssues} we opted for an alternative approach. We used the acme-dns-certbot tool \cite{acmedns}, which interfaces CertBot with a third-party DNS server for validation instead of HTTP. This method is especially beneficial for issuing certificates for individual servers behind a load balancer, where traditional HTTP certificate validation would require setting validation files on each server.
 
 \subsection{Scaling and Upgrade Strategy}
 %docker swarm
@@ -199,14 +210,17 @@ We chose Docker Swarm as our container orchestration platform because it is incl
 
 We first deployed the Docker Swarm as a separate cluster beside our single-node production server in Digital Ocean to ensure a transition that would not disrupt our live server. For each service, including our API, we added an additional replica in order to distribute the workload across multiple containers.
 
-However, as the inherent load balancer, the routing mesh, of Docker Swarm is rather low-level, in which it from-the-shelf only redirects traffic to replicas when a node is “unhealthy”, or dead, we opted for a dedicated load balancer to complement the routing mesh by employing a more sophisticated traffic distribution. Simply redirecting traffic when a node is crashed  that initiated the whole focus on scaling and replication.
+However, the inherent load balancer of Docker Swarm, the routing mesh, is rather low-level, and from-the-shelf it only redirects traffic to replicas when a node is “unhealthy” or dead.
+Therefore, we opted for a dedicated load balancer to complement the routing mesh by employing a more sophisticated traffic distribution. 
+Simply redirecting traffic when a node is crashed  that initiated the whole focus on scaling and replication.
 
 \subsubsection*{Nginx}
-We chose to utilise Nginx as both reverse proxy and load balancer. This involved adding a new droplet in our Digital Ocean project outside the swarm to run an instance of Nginx, which we configured to handle a more sophisticated traffic distribution between the replicated services.
+We use Nginx as both reverse proxy and load balancer. This involved adding a new virtual machine in our Digital Ocean project outside the Docker Swarm to run an instance of Nginx, which we configured to handle a more sophisticated traffic distribution between the replicated services.
 
 To configure Nginx, we separated the configuration files into two parts, one for the API and one for the web client. The configuration file for the API includes an upstream block that lists the IP addresses of the replicas in the swarm cluster along the API ports, allowing Nginx to direct traffic to the specified instances. Additionally we added server blocks for HTTP and HTTPS traffic, effectively redirecting all HTTP traffic to HTTPS. Similarly, the configuration file for the web client follows the same pattern but includes the IP addresses and service ports of the web client in the upstream block instead. 
 %See appendix \textcolor{red}{X} for the configuration file of the API service.
 
 
-\subsection{AI Tools Utilized}
-To automate the production of easy or recurring code such as a new prometheus monitoring metric, generating skeleton code, code completion and helping us gaining a high-level understanding of the ITU-MiniTwit system, GitHub Copilot was used by multiple developers. It was quite bad at guessing the intended implementation logic of new features.
+\subsection{Use of AI tools}
+To automate the production of easy or recurring code such as a new Prometheus monitoring metric, generating skeleton code, code completion and helping us gaining a high-level understanding of the ITU-MiniTwit system, GitHub Copilot was used by multiple developers. 
+However, it was quite bad at guessing the intended implementation logic of new features, and therefore served no purpose in the development in these cases.
